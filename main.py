@@ -52,7 +52,12 @@ class QuestionRow:
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             padding=12,
-            border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
+            border=ft.Border(
+                left=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                top=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                right=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+            ),
             border_radius=10,
         )
 
@@ -104,7 +109,7 @@ def main(page: ft.Page) -> None:
     question_list = ft.ListView(
         expand=True,
         spacing=12,
-        padding=ft.padding.all(16),
+        padding=16,
     )
 
     def append_questions(count: int) -> None:
