@@ -53,10 +53,10 @@ class QuestionRow:
             ),
             padding=12,
             border=ft.Border(
-                left=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
-                top=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
-                right=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
-                bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                left=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                right=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
             ),
             border_radius=10,
         )
@@ -69,8 +69,8 @@ class QuestionRow:
             self.is_correct = is_correct
             self.on_score_change(self.question_type, 1 if is_correct else -1)
 
-        e.control.bgcolor = ft.Colors.GREEN_100 if is_correct else None
-        e.control.border_color = ft.Colors.GREEN if is_correct else None
+        e.control.bgcolor = ft.colors.GREEN_100 if is_correct else None
+        e.control.border_color = ft.colors.GREEN if is_correct else None
         e.control.update()
 
 
@@ -143,8 +143,8 @@ def main(page: ft.Page) -> None:
             spacing=16,
         ),
         padding=16,
-        bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
-        border=ft.border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT)),
+        bgcolor=ft.colors.SURFACE_CONTAINER_HIGHEST,
+        border=ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
     )
 
     firstname_field = ft.TextField(label="Firstname", autofocus=True)
