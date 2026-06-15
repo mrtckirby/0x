@@ -7,6 +7,7 @@ import flet as ft
 
 QUESTION_TYPES = ("a", "b", "c", "d")
 QUESTION_BATCH_SIZE = 20
+SCROLL_THRESHOLD = 400
 
 
 @dataclass
@@ -85,7 +86,7 @@ def main(page: ft.Page) -> None:
 
     def refresh_dashboard() -> None:
         if state.firstname or state.lastname:
-            name_text.value = f"Student: {state.firstname} {state.lastname}".strip()
+            name_text.value = f"Student: {state.firstname} {state.lastname}"
         else:
             name_text.value = "Student: —"
 
@@ -119,7 +120,7 @@ def main(page: ft.Page) -> None:
             question_list.controls.append(question_row.control)
 
     def handle_scroll(e: ft.OnScrollEvent) -> None:
-        if e.pixels >= e.max_scroll_extent - 400:
+        if e.pixels >= e.max_scroll_extent - SCROLL_THRESHOLD:
             append_questions(QUESTION_BATCH_SIZE)
             page.update()
 
