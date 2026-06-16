@@ -374,7 +374,7 @@ def main(page: ft.Page) -> None:
         text_align=ft.TextAlign.CENTER,
     )
 
-    dashboard = ft.Container(expand=True)
+    dashboard = ft.Container(width=float("inf"))
 
     def refresh_dashboard() -> None:
         if state.firstname or state.lastname:
@@ -433,18 +433,16 @@ def main(page: ft.Page) -> None:
         alignment=ft.MainAxisAlignment.CENTER,
     )
 
-    dashboard.content = ft.Container(
-        content=ft.Column(
-            controls=[
-                totals_row,
-                ft.Container(content=name_text, alignment=ft.alignment.center_left),
-            ],
-            spacing=10,
-            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-        ),
-        padding=ft.padding.symmetric(horizontal=16, vertical=12),
-        expand=True,
+    dashboard.content = ft.Column(
+        controls=[
+            totals_row,
+            name_text,
+        ],
+        spacing=10,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        tight=True,
     )
+    dashboard.padding = ft.padding.symmetric(horizontal=16, vertical=12)
     dashboard.bgcolor = ft.colors.SURFACE_CONTAINER_HIGHEST
     dashboard.border = ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT))
 
@@ -501,7 +499,7 @@ def main(page: ft.Page) -> None:
     page.dialog = name_dialog
     page.overlay.append(
         ft.SafeArea(
-            content=ft.Container(content=dashboard, expand=True),
+            content=dashboard,
             top=True,
             bottom=False,
             left=False,
