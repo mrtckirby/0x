@@ -10,6 +10,28 @@ import flet as ft
 QUESTION_TYPES = ("a", "b", "c", "d")
 QUESTION_BATCH_SIZE = 20
 FLOAT_TOLERANCE = 0.01
+QUESTION_TYPE_DETAILS = {
+    "a": {
+        "label": "Base conversion",
+        "color": ft.colors.BLUE_700,
+        "background": ft.colors.BLUE_50,
+    },
+    "b": {
+        "label": "Binary arithmetic",
+        "color": ft.colors.DEEP_PURPLE_700,
+        "background": ft.colors.DEEP_PURPLE_50,
+    },
+    "c": {
+        "label": "Unit conversion",
+        "color": ft.colors.TEAL_700,
+        "background": ft.colors.TEAL_50,
+    },
+    "d": {
+        "label": "Number of values",
+        "color": ft.colors.ORANGE_800,
+        "background": ft.colors.ORANGE_50,
+    },
+}
 UNIT_VALUES = {
     "bit": 1,
     "byte": 8,
@@ -53,11 +75,11 @@ def format_binary(value: int) -> str:
     return format(value, "08b")
 
 
-def format_hex(value: int) -> str:
+def format_hexadecimal(value: int) -> str:
     return format(value, "02X")
 
 
-def normalise_hex(value: str) -> str:
+def normalise_hexadecimal(value: str) -> str:
     cleaned = value.strip().lower()
     if cleaned.startswith("0x"):
         cleaned = cleaned[2:]
@@ -95,12 +117,12 @@ def binary_validator(expected: int) -> Callable[[str], bool]:
     return validate
 
 
-def hex_validator(expected: int) -> Callable[[str], bool]:
-    expected_hex = format_hex(expected).lower()
+def hexadecimal_validator(expected: int) -> Callable[[str], bool]:
+    expected_hexadecimal = format_hexadecimal(expected).lower()
 
     def validate(answer: str) -> bool:
-        cleaned = normalise_hex(answer)
-        return cleaned == expected_hex
+        cleaned = normalise_hexadecimal(answer)
+        return cleaned == expected_hexadecimal
 
     return validate
 
@@ -135,17 +157,17 @@ def number_validator(expected_values: list[float]) -> Callable[[str], bool]:
 
 def generate_base_conversion_question() -> Question:
     value = random.randint(0, 255)
-    source_base, target_base = random.sample(("binary", "denary", "hex"), 2)
+    source_base, target_base = random.sample(("binary", "denary", "hexadecimal"), 2)
 
     representations = {
         "binary": format_binary(value),
         "denary": str(value),
-        "hex": format_hex(value),
+        "hexadecimal": format_hexadecimal(value),
     }
     validators = {
         "binary": binary_validator(value),
         "denary": integer_validator(value),
-        "hex": hex_validator(value),
+        "hexadecimal": hexadecimal_validator(value),
     }
 
     prompt = (
@@ -249,32 +271,42 @@ class QuestionRow:
         self.validator = question.validator
         self.on_score_change = on_score_change
         self.is_correct = False
+        self.question_color = QUESTION_TYPE_DETAILS[self.question_type]["color"]
+        self.question_background = QUESTION_TYPE_DETAILS[self.question_type]["background"]
 
         self.answer_field = ft.TextField(
             width=180,
             hint_text="Type answer",
             dense=True,
             on_change=self._handle_change,
+            border_color=self.question_color,
+            focused_border_color=self.question_color,
         )
 
-        prompt = f"[{self.question_type.upper()}] {question.prompt}"
+        prompt_text = ft.Text(
+            question.prompt,
+            color=self.question_color,
+            size=18,
+            weight=ft.FontWeight.W_600,
+        )
 
         self.control = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Container(content=ft.Text(prompt), expand=True),
+                    ft.Container(content=prompt_text, expand=True),
                     self.answer_field,
                 ],
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=12,
+            padding=16,
+            bgcolor=self.question_background,
             border=ft.Border(
-                left=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                right=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                left=ft.BorderSide(2, self.question_color),
+                top=ft.BorderSide(1, self.question_color),
+                right=ft.BorderSide(1, self.question_color),
+                bottom=ft.BorderSide(1, self.question_color),
             ),
-            border_radius=10,
+            border_radius=12,
         )
 
     def _handle_change(self, e: ft.ControlEvent) -> None:
@@ -286,7 +318,7 @@ class QuestionRow:
             self.on_score_change(self.question_type, 1 if is_correct else -1)
 
         e.control.bgcolor = ft.colors.GREEN_100 if is_correct else None
-        e.control.border_color = ft.colors.GREEN if is_correct else None
+        e.control.border_color = ft.colors.GREEN if is_correct else self.question_color
         e.control.update()
 
 
@@ -298,11 +330,12 @@ def main(page: ft.Page) -> None:
 
     state = AppState()
 
-    name_text = ft.Text("Student: —", weight=ft.FontWeight.BOLD)
+    name_text = ft.Text("Student: —", weight=ft.FontWeight.BOLD, size=20)
     score_texts = {
-        question_type: ft.Text(f"{question_type.upper()}: 0")
+        question_type: ft.Text(size=24, weight=ft.FontWeight.BOLD)
         for question_type in QUESTION_TYPES
     }
+    average_text = ft.Text(size=24, weight=ft.FontWeight.BOLD, color=ft.colors.GREEN_700)
 
     dashboard = ft.Container()
 
@@ -312,10 +345,17 @@ def main(page: ft.Page) -> None:
         else:
             name_text.value = "Student: —"
 
+        total_score = 0
         for question_type in QUESTION_TYPES:
+            score = state.scores[question_type]
+            total_score += score
             score_texts[question_type].value = (
-                f"{question_type.upper()}: {state.scores[question_type]}"
+                f"{QUESTION_TYPE_DETAILS[question_type]['label']}: {score}"
             )
+            score_texts[question_type].color = QUESTION_TYPE_DETAILS[question_type]["color"]
+
+        average_score = total_score / len(QUESTION_TYPES)
+        average_text.value = f"Average: {average_score:.2f}"
 
         dashboard.update()
 
@@ -346,9 +386,12 @@ def main(page: ft.Page) -> None:
             name_text,
             ft.VerticalDivider(width=1),
             *[score_texts[question_type] for question_type in QUESTION_TYPES],
+            ft.VerticalDivider(width=1),
+            average_text,
         ],
         wrap=True,
-        spacing=16,
+        spacing=20,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
     )
     dashboard.padding = 16
     dashboard.bgcolor = ft.colors.SURFACE_CONTAINER_HIGHEST
@@ -409,7 +452,7 @@ def main(page: ft.Page) -> None:
         ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Container(height=88),
+                    ft.Container(height=120),
                     ft.Container(
                         content=ft.Column(
                             controls=[
