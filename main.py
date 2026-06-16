@@ -281,7 +281,7 @@ class QuestionRow:
 
         prompt_text = ft.Text(
             question.prompt,
-            color=self.question_color,
+            color=ft.colors.BLACK,
             size=18,
             weight=ft.FontWeight.W_600,
             font_family=MONOSPACE_FONT,
@@ -299,7 +299,9 @@ class QuestionRow:
             content=ft.Row(
                 controls=[
                     accent_bar,
-                    ft.Container(content=prompt_text, expand=True, padding=ft.padding.only(left=10)),
+                    ft.Container(
+                        content=prompt_text, expand=True, padding=ft.padding.only(left=10)
+                    ),
                     self.answer_field,
                 ],
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
