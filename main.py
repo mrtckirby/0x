@@ -320,15 +320,16 @@ class QuestionRow:
 
 def build_score_block(label: str, value_text: ft.Text, color: str) -> ft.Control:
     return ft.Container(
-        width=120,
+        width=100,
         content=ft.Column(
             controls=[
                 ft.Text(
                     label,
-                    size=12,
+                    size=11,
                     color=color,
                     font_family=MONOSPACE_FONT,
                     text_align=ft.TextAlign.CENTER,
+                    max_lines=2,
                 ),
                 value_text,
             ],
@@ -350,7 +351,7 @@ def main(page: ft.Page) -> None:
     name_text = ft.Text(
         "Student: —",
         weight=ft.FontWeight.BOLD,
-        size=20,
+        size=18,
         font_family=MONOSPACE_FONT,
     )
     score_value_texts = {
@@ -373,7 +374,7 @@ def main(page: ft.Page) -> None:
         text_align=ft.TextAlign.CENTER,
     )
 
-    dashboard = ft.Container()
+    dashboard = ft.Container(expand=True)
 
     def refresh_dashboard() -> None:
         if state.firstname or state.lastname:
@@ -414,10 +415,8 @@ def main(page: ft.Page) -> None:
 
     append_questions(QUESTION_BATCH_SIZE)
 
-    dashboard.content = ft.Row(
+    totals_row = ft.Row(
         controls=[
-            name_text,
-            ft.VerticalDivider(width=1),
             *[
                 build_score_block(
                     QUESTION_TYPE_DETAILS[question_type]["label"],
@@ -426,24 +425,32 @@ def main(page: ft.Page) -> None:
                 )
                 for question_type in QUESTION_TYPES
             ],
-            ft.VerticalDivider(width=1),
             build_score_block("Average", average_value_text, ft.colors.GREEN_700),
         ],
         wrap=True,
         spacing=12,
         run_spacing=8,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        alignment=ft.MainAxisAlignment.CENTER,
     )
-    dashboard.padding = 16
+
+    dashboard.content = ft.Container(
+        content=ft.Column(
+            controls=[
+                totals_row,
+                ft.Container(content=name_text, alignment=ft.alignment.center_left),
+            ],
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
+        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        expand=True,
+    )
     dashboard.bgcolor = ft.colors.SURFACE_CONTAINER_HIGHEST
     dashboard.border = ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT))
 
     load_more_button = ft.FilledButton(
         text=f"Load {QUESTION_BATCH_SIZE} more questions",
         on_click=load_more_questions,
-        style=ft.ButtonStyle(
-            text_style=ft.TextStyle(font_family=MONOSPACE_FONT, size=16)
-        ),
     )
 
     firstname_field = ft.TextField(
@@ -494,7 +501,7 @@ def main(page: ft.Page) -> None:
     page.dialog = name_dialog
     page.overlay.append(
         ft.SafeArea(
-            content=dashboard,
+            content=ft.Container(content=dashboard, expand=True),
             top=True,
             bottom=False,
             left=False,
@@ -505,7 +512,7 @@ def main(page: ft.Page) -> None:
         ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Container(height=120),
+                    ft.Container(height=130),
                     ft.Container(
                         content=ft.Column(
                             controls=[
