@@ -68,6 +68,8 @@ class Question:
     prompt: str
     validator: Callable[[str], bool]
 
+def singular_or_plural(count: int, singular: str, plural: str) -> str:
+    return singular if count == 1 else plural
 
 def format_binary(value: int) -> str:
     return format(value, "08b")
@@ -232,28 +234,32 @@ def generate_unit_conversion_question() -> Question:
 
 def generate_bit_capacity_question() -> Question:
     bits = random.randint(1, 8)
-    prompt = f"How many different values can be represented using {bits} bits?"
+    bit_label = singular_or_plural(bits, "bit", "bits")
+    prompt = f"How many different values can be represented using {bits} {bit_label}?"
     return Question("d", prompt, integer_validator(2**bits))
 
 
 def generate_denary_digit_capacity_question() -> Question:
     digits = random.randint(1, 6)
+    digit_label = singular_or_plural(digits, "digit", "digits")
     prompt = (
-        f"How many different values can be represented using {digits} denary digits?"
+        f"How many different values can be represented using {digits} denary {digit_label}?"
     )
     return Question("d", prompt, integer_validator(10**digits))
 
 
 def generate_bit_highest_value_question() -> Question:
     bits = random.randint(1, 8)
-    prompt = f"What is the highest value that can be represented with {bits} bits?"
+    bit_label = singular_or_plural(bits, "bit", "bits")
+    prompt = f"What is the highest value that can be represented with {bits} {bit_label}?"
     return Question("d", prompt, integer_validator(2**bits - 1))
 
 
 def generate_denary_highest_value_question() -> Question:
     digits = random.randint(1, 6)
+    digit_label = singular_or_plural(digits, "digit", "digits")
     prompt = (
-        f"What is the highest value that can be represented with {digits} denary digits?"
+        f"What is the highest value that can be represented with {digits} denary {digit_label}?"
     )
     return Question("d", prompt, integer_validator(10**digits - 1))
 
