@@ -10,26 +10,23 @@ import flet as ft
 QUESTION_TYPES = ("a", "b", "c", "d")
 QUESTION_BATCH_SIZE = 20
 FLOAT_TOLERANCE = 0.01
+MONOSPACE_FONT = "Courier New"
 QUESTION_TYPE_DETAILS = {
     "a": {
         "label": "Base conversion",
         "color": ft.colors.BLUE_700,
-        "background": ft.colors.BLUE_50,
     },
     "b": {
         "label": "Binary arithmetic",
         "color": ft.colors.DEEP_PURPLE_700,
-        "background": ft.colors.DEEP_PURPLE_50,
     },
     "c": {
         "label": "Unit conversion",
         "color": ft.colors.TEAL_700,
-        "background": ft.colors.TEAL_50,
     },
     "d": {
         "label": "Number of values",
         "color": ft.colors.ORANGE_800,
-        "background": ft.colors.ORANGE_50,
     },
 }
 UNIT_VALUES = {
@@ -272,15 +269,14 @@ class QuestionRow:
         self.on_score_change = on_score_change
         self.is_correct = False
         self.question_color = QUESTION_TYPE_DETAILS[self.question_type]["color"]
-        self.question_background = QUESTION_TYPE_DETAILS[self.question_type]["background"]
 
         self.answer_field = ft.TextField(
             width=180,
             hint_text="Type answer",
             dense=True,
             on_change=self._handle_change,
-            border_color=self.question_color,
-            focused_border_color=self.question_color,
+            text_style=ft.TextStyle(font_family=MONOSPACE_FONT, size=16),
+            hint_style=ft.TextStyle(font_family=MONOSPACE_FONT),
         )
 
         prompt_text = ft.Text(
@@ -288,6 +284,7 @@ class QuestionRow:
             color=self.question_color,
             size=18,
             weight=ft.FontWeight.W_600,
+            font_family=MONOSPACE_FONT,
         )
 
         self.control = ft.Container(
@@ -299,12 +296,11 @@ class QuestionRow:
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             padding=16,
-            bgcolor=self.question_background,
             border=ft.Border(
-                left=ft.BorderSide(2, self.question_color),
-                top=ft.BorderSide(1, self.question_color),
-                right=ft.BorderSide(1, self.question_color),
-                bottom=ft.BorderSide(1, self.question_color),
+                left=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                right=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
             ),
             border_radius=12,
         )
@@ -318,8 +314,29 @@ class QuestionRow:
             self.on_score_change(self.question_type, 1 if is_correct else -1)
 
         e.control.bgcolor = ft.colors.GREEN_100 if is_correct else None
-        e.control.border_color = ft.colors.GREEN if is_correct else self.question_color
+        e.control.border_color = ft.colors.GREEN if is_correct else None
         e.control.update()
+
+
+def build_score_block(label: str, value_text: ft.Text, color: str) -> ft.Control:
+    return ft.Container(
+        width=120,
+        content=ft.Column(
+            controls=[
+                ft.Text(
+                    label,
+                    size=12,
+                    color=color,
+                    font_family=MONOSPACE_FONT,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                value_text,
+            ],
+            spacing=2,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            tight=True,
+        ),
+    )
 
 
 def main(page: ft.Page) -> None:
@@ -330,12 +347,31 @@ def main(page: ft.Page) -> None:
 
     state = AppState()
 
-    name_text = ft.Text("Student: —", weight=ft.FontWeight.BOLD, size=20)
-    score_texts = {
-        question_type: ft.Text(size=24, weight=ft.FontWeight.BOLD)
+    name_text = ft.Text(
+        "Student: —",
+        weight=ft.FontWeight.BOLD,
+        size=20,
+        font_family=MONOSPACE_FONT,
+    )
+    score_value_texts = {
+        question_type: ft.Text(
+            "0",
+            size=28,
+            weight=ft.FontWeight.BOLD,
+            color=QUESTION_TYPE_DETAILS[question_type]["color"],
+            font_family=MONOSPACE_FONT,
+            text_align=ft.TextAlign.CENTER,
+        )
         for question_type in QUESTION_TYPES
     }
-    average_text = ft.Text(size=24, weight=ft.FontWeight.BOLD, color=ft.colors.GREEN_700)
+    average_value_text = ft.Text(
+        "0.00",
+        size=28,
+        weight=ft.FontWeight.BOLD,
+        color=ft.colors.GREEN_700,
+        font_family=MONOSPACE_FONT,
+        text_align=ft.TextAlign.CENTER,
+    )
 
     dashboard = ft.Container()
 
@@ -349,13 +385,10 @@ def main(page: ft.Page) -> None:
         for question_type in QUESTION_TYPES:
             score = state.scores[question_type]
             total_score += score
-            score_texts[question_type].value = (
-                f"{QUESTION_TYPE_DETAILS[question_type]['label']}: {score}"
-            )
-            score_texts[question_type].color = QUESTION_TYPE_DETAILS[question_type]["color"]
+            score_value_texts[question_type].value = str(score)
 
         average_score = total_score / len(QUESTION_TYPES)
-        average_text.value = f"Average: {average_score:.2f}"
+        average_value_text.value = f"{average_score:.2f}"
 
         dashboard.update()
 
@@ -385,12 +418,20 @@ def main(page: ft.Page) -> None:
         controls=[
             name_text,
             ft.VerticalDivider(width=1),
-            *[score_texts[question_type] for question_type in QUESTION_TYPES],
+            *[
+                build_score_block(
+                    QUESTION_TYPE_DETAILS[question_type]["label"],
+                    score_value_texts[question_type],
+                    QUESTION_TYPE_DETAILS[question_type]["color"],
+                )
+                for question_type in QUESTION_TYPES
+            ],
             ft.VerticalDivider(width=1),
-            average_text,
+            build_score_block("Average", average_value_text, ft.colors.GREEN_700),
         ],
         wrap=True,
-        spacing=20,
+        spacing=12,
+        run_spacing=8,
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
     )
     dashboard.padding = 16
@@ -400,10 +441,22 @@ def main(page: ft.Page) -> None:
     load_more_button = ft.FilledButton(
         text=f"Load {QUESTION_BATCH_SIZE} more questions",
         on_click=load_more_questions,
+        style=ft.ButtonStyle(
+            text_style=ft.TextStyle(font_family=MONOSPACE_FONT, size=16)
+        ),
     )
 
-    firstname_field = ft.TextField(label="Firstname", autofocus=True)
-    lastname_field = ft.TextField(label="Lastname")
+    firstname_field = ft.TextField(
+        label="Firstname",
+        autofocus=True,
+        text_style=ft.TextStyle(font_family=MONOSPACE_FONT),
+        label_style=ft.TextStyle(font_family=MONOSPACE_FONT),
+    )
+    lastname_field = ft.TextField(
+        label="Lastname",
+        text_style=ft.TextStyle(font_family=MONOSPACE_FONT),
+        label_style=ft.TextStyle(font_family=MONOSPACE_FONT),
+    )
 
     def start_session(_: ft.ControlEvent) -> None:
         firstname = firstname_field.value.strip()
@@ -424,10 +477,10 @@ def main(page: ft.Page) -> None:
 
     name_dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Start your session"),
+        title=ft.Text("Start your session", font_family=MONOSPACE_FONT),
         content=ft.Column(
             controls=[
-                ft.Text("Enter your name to begin."),
+                ft.Text("Enter your name to begin.", font_family=MONOSPACE_FONT),
                 firstname_field,
                 lastname_field,
             ],
