@@ -480,7 +480,7 @@ def main(page: ft.Page) -> None:
                 )
                 for question_type in QUESTION_TYPES
             ],
-            build_score_block("Average", average_value_text, ft.colors.GREEN_900),
+            build_score_block("Average\n", average_value_text, ft.colors.GREEN_900),
         ],
         wrap=True,
         spacing=12,
