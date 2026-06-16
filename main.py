@@ -304,6 +304,8 @@ def main(page: ft.Page) -> None:
         for question_type in QUESTION_TYPES
     }
 
+    dashboard = ft.Container()
+
     def refresh_dashboard() -> None:
         if state.firstname or state.lastname:
             name_text.value = f"Student: {state.firstname} {state.lastname}"
@@ -339,20 +341,18 @@ def main(page: ft.Page) -> None:
 
     append_questions(QUESTION_BATCH_SIZE)
 
-    dashboard = ft.Container(
-        content=ft.Row(
-            controls=[
-                name_text,
-                ft.VerticalDivider(width=1),
-                *[score_texts[question_type] for question_type in QUESTION_TYPES],
-            ],
-            wrap=True,
-            spacing=16,
-        ),
-        padding=16,
-        bgcolor=ft.colors.SURFACE_CONTAINER_HIGHEST,
-        border=ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+    dashboard.content = ft.Row(
+        controls=[
+            name_text,
+            ft.VerticalDivider(width=1),
+            *[score_texts[question_type] for question_type in QUESTION_TYPES],
+        ],
+        wrap=True,
+        spacing=16,
     )
+    dashboard.padding = 16
+    dashboard.bgcolor = ft.colors.SURFACE_CONTAINER_HIGHEST
+    dashboard.border = ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT))
 
     load_more_button = ft.FilledButton(
         text=f"Load {QUESTION_BATCH_SIZE} more questions",
@@ -396,29 +396,39 @@ def main(page: ft.Page) -> None:
     )
 
     page.dialog = name_dialog
+    page.overlay.append(
+        ft.SafeArea(
+            content=dashboard,
+            top=True,
+            bottom=False,
+            left=False,
+            right=False,
+        )
+    )
     page.add(
-        ft.Column(
-            controls=[
-                dashboard,
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            question_column,
-                            ft.Container(
-                                content=load_more_button,
-                                alignment=ft.alignment.center,
-                                padding=ft.padding.only(top=8, bottom=16),
-                            ),
-                        ],
-                        spacing=0,
+        ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Container(height=88),
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                question_column,
+                                ft.Container(
+                                    content=load_more_button,
+                                    alignment=ft.alignment.center,
+                                    padding=ft.padding.only(top=8, bottom=16),
+                                ),
+                            ],
+                            spacing=0,
+                        ),
+                        padding=16,
                     ),
-                    padding=16,
-                    expand=True,
-                ),
-            ],
+                ],
+                spacing=0,
+                scroll=ft.ScrollMode.AUTO,
+            ),
             expand=True,
-            spacing=0,
-            scroll=ft.ScrollMode.AUTO,
         )
     )
 
