@@ -287,13 +287,23 @@ class QuestionRow:
             font_family=MONOSPACE_FONT,
         )
 
+        accent_bar = ft.Container(
+            width=6,
+            height=56,
+            bgcolor=self.question_color,
+            border_radius=6,
+            opacity=0.45,
+        )
+
         self.control = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Container(content=prompt_text, expand=True),
+                    accent_bar,
+                    ft.Container(content=prompt_text, expand=True, padding=ft.padding.only(left=10)),
                     self.answer_field,
                 ],
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=12,
             ),
             padding=16,
             border=ft.Border(
