@@ -11,22 +11,23 @@ QUESTION_TYPES = ("a", "b", "c", "d")
 QUESTION_BATCH_SIZE = 20
 FLOAT_TOLERANCE = 0.01
 MONOSPACE_FONT = "Courier New"
+REQUIRED_CORRECT_RATIO = 0.75
 QUESTION_TYPE_DETAILS = {
     "a": {
         "label": "Base conversion",
-        "color": ft.colors.BLUE_700,
+        "color": ft.colors.BLUE_900,
     },
     "b": {
         "label": "Binary arithmetic",
-        "color": ft.colors.DEEP_PURPLE_700,
+        "color": ft.colors.DEEP_PURPLE_900,
     },
     "c": {
         "label": "Unit conversion",
-        "color": ft.colors.TEAL_700,
+        "color": ft.colors.TEAL_900,
     },
     "d": {
         "label": "Number of values",
-        "color": ft.colors.ORANGE_800,
+        "color": ft.colors.DEEP_ORANGE_900,
     },
 }
 UNIT_VALUES = {
@@ -288,11 +289,11 @@ class QuestionRow:
         )
 
         accent_bar = ft.Container(
-            width=6,
+            width=8,
             height=56,
             bgcolor=self.question_color,
-            border_radius=6,
-            opacity=0.45,
+            border_radius=8,
+            opacity=0.8,
         )
 
         self.control = ft.Container(
@@ -339,6 +340,7 @@ def build_score_block(label: str, value_text: ft.Text, color: str) -> ft.Control
                     label,
                     size=11,
                     color=color,
+                    weight=ft.FontWeight.W_600,
                     font_family=MONOSPACE_FONT,
                     text_align=ft.TextAlign.CENTER,
                     max_lines=2,
@@ -359,13 +361,26 @@ def main(page: ft.Page) -> None:
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
     state = AppState()
+    total_questions_loaded = 0
 
-    name_text = ft.Text(
-        "Student: —",
-        weight=ft.FontWeight.BOLD,
+    student_label_text = ft.Text(
+        "Student:",
         size=18,
         font_family=MONOSPACE_FONT,
+        weight=ft.FontWeight.W_400,
     )
+    student_name_text = ft.Text(
+        "—",
+        size=18,
+        font_family=MONOSPACE_FONT,
+        weight=ft.FontWeight.BOLD,
+    )
+    name_row = ft.Row(
+        controls=[student_label_text, student_name_text],
+        spacing=6,
+        wrap=False,
+    )
+
     score_value_texts = {
         question_type: ft.Text(
             "0",
@@ -381,7 +396,7 @@ def main(page: ft.Page) -> None:
         "0.00",
         size=28,
         weight=ft.FontWeight.BOLD,
-        color=ft.colors.GREEN_700,
+        color=ft.colors.GREEN_900,
         font_family=MONOSPACE_FONT,
         text_align=ft.TextAlign.CENTER,
     )
@@ -389,10 +404,12 @@ def main(page: ft.Page) -> None:
     dashboard = ft.Container(width=float("inf"))
 
     def refresh_dashboard() -> None:
+        nonlocal total_questions_loaded
+
         if state.firstname or state.lastname:
-            name_text.value = f"Student: {state.firstname} {state.lastname}"
+            student_name_text.value = f"{state.firstname} {state.lastname}".strip()
         else:
-            name_text.value = "Student: —"
+            student_name_text.value = "—"
 
         total_score = 0
         for question_type in QUESTION_TYPES:
@@ -403,7 +420,11 @@ def main(page: ft.Page) -> None:
         average_score = total_score / len(QUESTION_TYPES)
         average_value_text.value = f"{average_score:.2f}"
 
+        required_correct = int(total_questions_loaded * REQUIRED_CORRECT_RATIO)
+        load_more_button.disabled = total_score < required_correct
+
         dashboard.update()
+        load_more_button.update()
 
     def update_score(question_type: str, delta: int) -> None:
         state.scores[question_type] += delta
@@ -412,6 +433,7 @@ def main(page: ft.Page) -> None:
     question_column = ft.Column(spacing=12)
 
     def append_questions(count: int) -> None:
+        nonlocal total_questions_loaded
         for _ in range(count):
             question_type = random.choice(QUESTION_TYPES)
             question = QUESTION_GENERATORS[question_type]()
@@ -420,9 +442,11 @@ def main(page: ft.Page) -> None:
                 on_score_change=update_score,
             )
             question_column.controls.append(question_row.control)
+            total_questions_loaded += 1
 
     def load_more_questions(_: ft.ControlEvent) -> None:
         append_questions(QUESTION_BATCH_SIZE)
+        refresh_dashboard()
         page.update()
 
     append_questions(QUESTION_BATCH_SIZE)
@@ -437,18 +461,19 @@ def main(page: ft.Page) -> None:
                 )
                 for question_type in QUESTION_TYPES
             ],
-            build_score_block("Average", average_value_text, ft.colors.GREEN_700),
+            build_score_block("Average", average_value_text, ft.colors.GREEN_900),
         ],
         wrap=True,
         spacing=12,
         run_spacing=8,
         alignment=ft.MainAxisAlignment.CENTER,
+        vertical_alignment=ft.CrossAxisAlignment.START,
     )
 
     dashboard.content = ft.Column(
         controls=[
             totals_row,
-            name_text,
+            name_row,
         ],
         spacing=10,
         horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -461,6 +486,7 @@ def main(page: ft.Page) -> None:
     load_more_button = ft.FilledButton(
         text=f"Load {QUESTION_BATCH_SIZE} more questions",
         on_click=load_more_questions,
+        disabled=True,
     )
 
     firstname_field = ft.TextField(
