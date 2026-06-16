@@ -183,7 +183,7 @@ def generate_binary_addition_question() -> Question:
             break
 
     binary_values = [format_binary(value) for value in values]
-    prompt = "Add these 8-bit binary numbers: " + " + ".join(binary_values)
+    prompt = "Add these 8-bit binary numbers:\n" + "\n+ ".join(binary_values)
     return Question("b", prompt, binary_validator(total))
 
 
