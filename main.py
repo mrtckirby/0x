@@ -333,6 +333,10 @@ def main(page: ft.Page) -> None:
             )
             question_column.controls.append(question_row.control)
 
+    def load_more_questions(_: ft.ControlEvent) -> None:
+        append_questions(QUESTION_BATCH_SIZE)
+        page.update()
+
     append_questions(QUESTION_BATCH_SIZE)
 
     dashboard = ft.Container(
@@ -348,6 +352,11 @@ def main(page: ft.Page) -> None:
         padding=16,
         bgcolor=ft.colors.SURFACE_CONTAINER_HIGHEST,
         border=ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+    )
+
+    load_more_button = ft.FilledButton(
+        text=f"Load {QUESTION_BATCH_SIZE} more questions",
+        on_click=load_more_questions,
     )
 
     firstname_field = ft.TextField(label="Firstname", autofocus=True)
@@ -391,7 +400,21 @@ def main(page: ft.Page) -> None:
         ft.Column(
             controls=[
                 dashboard,
-                ft.Container(content=question_column, padding=16, expand=True),
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            question_column,
+                            ft.Container(
+                                content=load_more_button,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=8, bottom=16),
+                            ),
+                        ],
+                        spacing=0,
+                    ),
+                    padding=16,
+                    expand=True,
+                ),
             ],
             expand=True,
             spacing=0,
