@@ -244,10 +244,29 @@ def generate_denary_digit_capacity_question() -> Question:
     return Question("d", prompt, integer_validator(10**digits))
 
 
-def generate_capacity_question() -> Question:
-    generator = random.choice(
-        (generate_bit_capacity_question, generate_denary_digit_capacity_question)
+def generate_bit_highest_value_question() -> Question:
+    bits = random.randint(1, 8)
+    prompt = f"What is the highest value that can be represented with {bits} bits?"
+    return Question("d", prompt, integer_validator(2**bits - 1))
+
+
+def generate_denary_highest_value_question() -> Question:
+    digits = random.randint(1, 6)
+    prompt = (
+        f"What is the highest value that can be represented with {digits} denary digits?"
     )
+    return Question("d", prompt, integer_validator(10**digits - 1))
+
+
+def generate_capacity_question() -> Question:
+    if random.random() < 0.5:
+        generator = random.choice(
+            (generate_bit_capacity_question, generate_denary_digit_capacity_question)
+        )
+    else:
+        generator = random.choice(
+            (generate_bit_highest_value_question, generate_denary_highest_value_question)
+        )
     return generator()
 
 
