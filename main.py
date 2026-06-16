@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import random
 import re
 from dataclasses import dataclass, field
@@ -10,7 +9,6 @@ import flet as ft
 
 QUESTION_TYPES = ("a", "b", "c", "d")
 QUESTION_BATCH_SIZE = 20
-SCROLL_THRESHOLD = 400
 FLOAT_TOLERANCE = 0.01
 UNIT_VALUES = {
     "bit": 1,
@@ -175,7 +173,7 @@ def generate_bit_shift_question() -> Question:
     shift = random.randint(1, 3)
 
     if direction == "left":
-        max_value = (255 >> shift)
+        max_value = 255 >> shift
         value = random.randint(0, max_value)
         result = value << shift
     else:
@@ -190,7 +188,9 @@ def generate_bit_shift_question() -> Question:
 
 
 def generate_binary_arithmetic_question() -> Question:
-    generator = random.choice((generate_binary_addition_question, generate_bit_shift_question))
+    generator = random.choice(
+        (generate_binary_addition_question, generate_bit_shift_question)
+    )
     return generator()
 
 
@@ -321,11 +321,7 @@ def main(page: ft.Page) -> None:
         state.scores[question_type] += delta
         refresh_dashboard()
 
-    question_list = ft.ListView(
-        expand=True,
-        spacing=12,
-        padding=16,
-    )
+    question_column = ft.Column(spacing=12)
 
     def append_questions(count: int) -> None:
         for _ in range(count):
@@ -335,14 +331,8 @@ def main(page: ft.Page) -> None:
                 question=question,
                 on_score_change=update_score,
             )
-            question_list.controls.append(question_row.control)
+            question_column.controls.append(question_row.control)
 
-    def handle_scroll(e: ft.OnScrollEvent) -> None:
-        if e.pixels >= e.max_scroll_extent - SCROLL_THRESHOLD:
-            append_questions(QUESTION_BATCH_SIZE)
-            page.update()
-
-    question_list.on_scroll = handle_scroll
     append_questions(QUESTION_BATCH_SIZE)
 
     dashboard = ft.Container(
@@ -401,10 +391,11 @@ def main(page: ft.Page) -> None:
         ft.Column(
             controls=[
                 dashboard,
-                question_list,
+                ft.Container(content=question_column, padding=16, expand=True),
             ],
             expand=True,
             spacing=0,
+            scroll=ft.ScrollMode.AUTO,
         )
     )
 
