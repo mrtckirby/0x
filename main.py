@@ -15,19 +15,19 @@ REQUIRED_CORRECT_RATIO = 0.75
 QUESTION_TYPE_DETAILS = {
     "a": {
         "label": "Base conversion",
-        "color": ft.colors.BLUE_900,
+        "color": ft.Colors.BLUE_900,
     },
     "b": {
         "label": "Binary arithmetic",
-        "color": ft.colors.DEEP_PURPLE_900,
+        "color": ft.Colors.DEEP_PURPLE_900,
     },
     "c": {
         "label": "Unit conversion",
-        "color": ft.colors.TEAL_900,
+        "color": ft.Colors.TEAL_900,
     },
     "d": {
         "label": "Number of values",
-        "color": ft.colors.DEEP_ORANGE_900,
+        "color": ft.Colors.DEEP_ORANGE_900,
     },
 }
 UNIT_VALUES = {
@@ -307,7 +307,7 @@ class QuestionRow:
 
         prompt_text = ft.Text(
             question.prompt,
-            color=ft.colors.BLACK,
+            color=ft.Colors.BLACK,
             size=18,
             weight=ft.FontWeight.W_600,
             font_family=MONOSPACE_FONT,
@@ -335,10 +335,10 @@ class QuestionRow:
             ),
             padding=16,
             border=ft.Border(
-                left=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                right=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
-                bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                left=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                top=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                right=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
             ),
             border_radius=12,
         )
@@ -351,8 +351,8 @@ class QuestionRow:
             self.is_correct = is_correct
             self.on_score_change(self.question_type, 1 if is_correct else -1)
 
-        e.control.bgcolor = ft.colors.GREEN_100 if is_correct else None
-        e.control.border_color = ft.colors.GREEN if is_correct else None
+        e.control.bgcolor = ft.Colors.GREEN_100 if is_correct else None
+        e.control.border_color = ft.Colors.GREEN if is_correct else None
         e.control.update()
 
 
@@ -421,7 +421,7 @@ def main(page: ft.Page) -> None:
         "0.00",
         size=28,
         weight=ft.FontWeight.BOLD,
-        color=ft.colors.GREEN_900,
+        color=ft.Colors.GREEN_900,
         font_family=MONOSPACE_FONT,
         text_align=ft.TextAlign.CENTER,
     )
@@ -486,7 +486,7 @@ def main(page: ft.Page) -> None:
                 )
                 for question_type in QUESTION_TYPES
             ],
-            build_score_block("Average\n", average_value_text, ft.colors.GREEN_900),
+            build_score_block("Average\n", average_value_text, ft.Colors.GREEN_900),
         ],
         wrap=True,
         spacing=12,
@@ -505,8 +505,8 @@ def main(page: ft.Page) -> None:
         tight=True,
     )
     dashboard.padding = ft.padding.symmetric(horizontal=16, vertical=12)
-    dashboard.bgcolor = ft.colors.SURFACE_CONTAINER_HIGHEST
-    dashboard.border = ft.border.only(bottom=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT))
+    dashboard.bgcolor = ft.Colors.SURFACE_CONTAINER_HIGHEST
+    dashboard.border = ft.border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT))
 
     load_more_button = ft.FilledButton(
         text=f"Load {QUESTION_BATCH_SIZE} more questions",
