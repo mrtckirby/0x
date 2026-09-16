@@ -14,7 +14,28 @@
     
     <style>
         body { font-family: 'Courier New', Courier, monospace; }
-        body { transition: opacity 0.3s; } 
+        body { transition: opacity 0.3s; }
+        
+        /* Streak Animation & Glow Effects */
+        .glow-text {
+            text-shadow: 0 0 10px currentColor, 0 0 18px currentColor;
+        }
+        
+        .pop-anim {
+            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Ensure spans can scale cleanly */
+        .score-val {
+            display: inline-block;
+            transition: text-shadow 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 m-0 p-0 flex flex-col min-h-screen">
@@ -61,23 +82,23 @@
             <!-- Score Blocks -->
             <div class="flex flex-col items-center w-24">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
-                <span id="score-a" class="text-2xl font-bold text-blue-900">0</span>
+                <span id="score-a" class="score-val text-2xl font-bold text-blue-900">0</span>
             </div>
             <div class="flex flex-col items-center w-24">
                 <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>arithmetic</span>
-                <span id="score-b" class="text-2xl font-bold text-purple-900">0</span>
+                <span id="score-b" class="score-val text-2xl font-bold text-purple-900">0</span>
             </div>
             <div class="flex flex-col items-center w-24">
                 <span class="text-[11px] font-semibold text-teal-900 text-center leading-tight h-8">Unit<br>conversion</span>
-                <span id="score-c" class="text-2xl font-bold text-teal-900">0</span>
+                <span id="score-c" class="score-val text-2xl font-bold text-teal-900">0</span>
             </div>
             <div class="flex flex-col items-center w-24">
                 <span class="text-[11px] font-semibold text-orange-900 text-center leading-tight h-8">Number of<br>values</span>
-                <span id="score-d" class="text-2xl font-bold text-orange-900">0</span>
+                <span id="score-d" class="score-val text-2xl font-bold text-orange-900">0</span>
             </div>
             <div class="flex flex-col items-center w-24">
                 <span class="text-[11px] font-semibold text-green-900 text-center leading-tight h-8"><br>Average</span>
-                <span id="score-avg" class="text-2xl font-bold text-green-900">0.00</span>
+                <span id="score-avg" class="score-val text-2xl font-bold text-green-900">0.00</span>
             </div>
         </div>
         
@@ -159,12 +180,13 @@
                 self.questions = []
 
         class Question:
-            def __init__(self, question_type, prompt, validator_type, expected, user_answer=""):
+            def __init__(self, question_type, prompt, validator_type, expected, user_answer="", date_awarded=None):
                 self.question_type = question_type
                 self.prompt = prompt
                 self.validator_type = validator_type
                 self.expected = expected
                 self.user_answer = user_answer
+                self.date_awarded = date_awarded
 
             def to_dict(self):
                 return {
@@ -172,7 +194,8 @@
                     "prompt": self.prompt,
                     "v_type": self.validator_type,
                     "expected": self.expected,
-                    "answer": self.user_answer
+                    "answer": self.user_answer,
+                    "awarded": self.date_awarded
                 }
 
             @classmethod
@@ -182,7 +205,8 @@
                     data["prompt"],
                     data["v_type"],
                     data["expected"],
-                    data.get("answer", "")
+                    data.get("answer", ""),
+                    data.get("awarded", None)
                 )
 
         state = AppState()
@@ -226,6 +250,54 @@
             return False
 
         # ==========================================
+        # STREAK CALCULATIONS
+        # ==========================================
+        def get_streak_level(score, initial=3):
+            """Returns the current streak tier. 0 if below initial.
+               Tiers gap doubles each time: e.g. target = 3, 9, 21, 45..."""
+            if score < initial:
+                return 0
+                
+            level = 0
+            target = initial
+            gap = initial
+            
+            while score >= target:
+                level += 1
+                gap *= 2
+                target += gap
+                
+            return level
+
+        def get_current_levels(today):
+            """Analyzes questions to find the daily scores and streak levels"""
+            daily_scores = {qt: 0 for qt in QUESTION_TYPES}
+            
+            for q in state.questions:
+                if q.date_awarded == today:
+                    daily_scores[q.question_type] += 1
+            
+            levels = {}
+            for qt in QUESTION_TYPES:
+                levels[qt] = get_streak_level(daily_scores[qt], 3)
+                
+            # Average relies on daily scores
+            daily_avg = sum(daily_scores.values()) / len(QUESTION_TYPES)
+            levels["avg"] = get_streak_level(daily_avg, 3)
+            
+            return levels
+
+        def trigger_pop(el_id):
+            """Applies a CSS animation class via a small DOM reflow hack"""
+            el = document.getElementById(el_id)
+            if not el: return
+            
+            el.classList.remove("pop-anim")
+            # Forcing browser reflow so the animation restarts immediately
+            _ = el.offsetWidth 
+            el.classList.add("pop-anim")
+
+        # ==========================================
         # VALIDATION PARSER
         # ==========================================
         def validate_answer(v_type, expected, answer):
@@ -252,8 +324,6 @@
                 
             elif v_type == "number_list":
                 parsed = parse_float(answer)
-                
-                # Check for integer match first if all expected are whole numbers
                 all_int = True
                 for v in expected:
                     if float(v) != int(float(v)):
@@ -278,7 +348,7 @@
             return False
 
         # ==========================================
-        # GENERATORS (Refactored to return serializable types)
+        # GENERATORS
         # ==========================================
         def generate_base_conversion_question():
             value = random.randint(0, 255)
@@ -316,8 +386,7 @@
                 for _ in range(term_count):
                     values.append(random.randint(0, 255))
                 total = sum(values)
-                if total <= 255: 
-                    break
+                if total <= 255: break
 
             binary_values = []
             for value in values:
@@ -342,8 +411,7 @@
             return Question("b", prompt, "binary_string", format_binary(result))
 
         def generate_binary_arithmetic_question():
-            generators = [generate_binary_addition_question, generate_bit_shift_question]
-            gen = random.choice(generators)
+            gen = random.choice([generate_binary_addition_question, generate_bit_shift_question])
             return gen()
 
         def generate_unit_conversion_question():
@@ -440,17 +508,16 @@
         # ==========================================
         # UI / DOM MANIPULATION
         # ==========================================
-        def recalculate_scores():
+        def refresh_dashboard():
+            # Recalculate lifetime scores
             for qt in QUESTION_TYPES:
                 state.scores[qt] = 0
                 
             for q in state.questions:
-                if validate_answer(q.validator_type, q.expected, q.user_answer):
+                if q.date_awarded:
                     state.scores[q.question_type] += 1
-
-        def refresh_dashboard():
-            recalculate_scores()
             
+            # Setup User Display
             name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
@@ -459,6 +526,7 @@
                 document.getElementById("label-student").innerText = "—"
                 document.getElementById("btn-start-over").classList.add("hidden")
 
+            # Update textual scores
             total_score = 0
             for qt in QUESTION_TYPES:
                 score = state.scores[qt]
@@ -469,6 +537,24 @@
                 avg = total_score / len(QUESTION_TYPES)
                 document.getElementById("score-avg").innerText = "{:.2f}".format(avg)
 
+            # Apply persistent glowing effects based on today's levels
+            today = window.Date.new().toDateString()
+            levels = get_current_levels(today)
+            
+            for qt in QUESTION_TYPES:
+                el = document.getElementById("score-" + qt)
+                if levels[qt] > 0:
+                    el.classList.add("glow-text")
+                else:
+                    el.classList.remove("glow-text")
+                    
+            avg_el = document.getElementById("score-avg")
+            if levels["avg"] > 0:
+                avg_el.classList.add("glow-text")
+            else:
+                avg_el.classList.remove("glow-text")
+
+            # Check Load More State
             required_correct = int(len(state.questions) * REQUIRED_CORRECT_RATIO)
             btn = document.getElementById("btn-load-more")
             
@@ -511,12 +597,30 @@
 
             def on_input(e):
                 question.user_answer = input_field.value
-                save_state()
-                refresh_dashboard()
+                is_correct = validate_answer(question.validator_type, question.expected, question.user_answer)
+                apply_style(is_correct)
                 
-                # Check style for this specific row
-                current_is_correct = validate_answer(question.validator_type, question.expected, question.user_answer)
-                apply_style(current_is_correct)
+                # Check for a new point (Right answers only, cannot be farmed!)
+                if is_correct and not question.date_awarded:
+                    today = window.Date.new().toDateString()
+                    old_levels = get_current_levels(today)
+                    
+                    question.date_awarded = today
+                    save_state()
+                    
+                    new_levels = get_current_levels(today)
+                    refresh_dashboard()
+                    
+                    # Did they cross a new streak threshold just now? Pop animation!
+                    for qt in QUESTION_TYPES:
+                        if new_levels[qt] > old_levels[qt]:
+                            trigger_pop("score-" + qt)
+                    
+                    if new_levels["avg"] > old_levels["avg"]:
+                        trigger_pop("score-avg")
+                else:
+                    save_state()
+                    refresh_dashboard()
                         
             input_field.addEventListener("input", on_input)
             return row
