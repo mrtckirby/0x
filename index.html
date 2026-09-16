@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CS Maths Practice</title>
+    <title>0x</title>
     
+    <!-- Modern SVG Favicon (Crisp at any screen resolution/zoom) -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+
+    <!-- PNG / ICO Fallbacks for older browsers -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png">
+
+    <!-- Apple Touch Icon (Used when students save the site to an iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicon.png">
+
     <!-- Local Self-Hosted Tailwind CSS -->
     <link rel="stylesheet" href="./tailwind.min.css">
     
@@ -124,13 +133,15 @@
             </div>
         </div>
         
-        <div class="flex items-center max-w-4xl mx-auto w-full px-2">
+        <div class="flex items-center max-w-4xl mx-auto w-full px-2 gap-2">
             <div>
                 <span class="text-lg">Student:</span>
                 <span id="label-student" class="text-lg font-bold">—</span>
             </div>
-            <button id="btn-start-over" class="ml-auto bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold py-1.5 px-3 rounded transition hidden">
-                Start Over
+            <button id="btn-start-over" title="Delete my data and progress and start again" class="p-1 text-gray-500 hover:text-red-600 rounded transition hidden focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
             </button>
         </div>
     </div>
@@ -164,7 +175,6 @@
             "number_of_values",
         )
         
-        # Toggle to permit or prevent multi-column carries in binary addition questions
         ALLOW_MULTI_COLUMN_CARRIES = False
 
         QUESTION_TYPE_WEIGHTS = {
@@ -323,7 +333,6 @@
             return False
 
         def has_multi_column_carry(values):
-            """Checks if adding a list of integers causes a column sum > 2 at any bit position"""
             carry = 0
             for i in range(8):
                 bit_sum = carry
