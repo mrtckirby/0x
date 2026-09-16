@@ -164,7 +164,6 @@
             "number_of_values",
         )
         
-        # Relative weights for question types
         QUESTION_TYPE_WEIGHTS = {
             "base_conversion": 1.0,
             "binary_addition": 1.0,
@@ -174,7 +173,8 @@
         }
         
         QUESTION_BATCH_SIZE = 20
-        FLOAT_TOLERANCE = 0.01
+        RELATIVE_TOLERANCE = 0.02  # Accept answers within 2% of target value
+        ABSOLUTE_TOLERANCE = 1e-6  # Absolute threshold for near-zero values
         REQUIRED_CORRECT_RATIO = 0.75
         STATE_KEY = "cs_maths_state"
 
@@ -208,7 +208,6 @@
             "gigabyte": "gigabytes",
         }
 
-        # Legacy Migration Map
         LEGACY_TYPE_MAP = {
             "a": "base_conversion",
             "c": "unit_conversion",
@@ -248,7 +247,6 @@
                 q_type = data["q_type"]
                 prompt = data["prompt"]
 
-                # Migrations from legacy single letter names
                 if q_type in LEGACY_TYPE_MAP:
                     q_type = LEGACY_TYPE_MAP[q_type]
                 elif q_type == "b":
@@ -315,7 +313,9 @@
 
         def is_close_to_any(value, expected_values):
             for expected in expected_values:
-                if abs(value - expected) <= FLOAT_TOLERANCE:
+                diff = abs(value - expected)
+                rel_target = RELATIVE_TOLERANCE * abs(expected)
+                if diff <= max(rel_target, ABSOLUTE_TOLERANCE):
                     return True
             return False
 
@@ -562,7 +562,6 @@
                 for q_data in data.get("questions", []):
                     state.questions.append(Question.from_dict(q_data))
                     
-                # Force immediate re-save to permanently commit legacy migrations to storage
                 save_state()
                 return True
             except Exception:
@@ -583,7 +582,6 @@
                     if q.date_awarded == today:
                         daily_scores[q.question_type] += 1
             
-            # Setup User Display
             name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
@@ -592,7 +590,6 @@
                 document.getElementById("label-student").innerText = "—"
                 document.getElementById("btn-start-over").classList.add("hidden")
 
-            # Update textual scores
             total_all_time = 0
             total_daily = 0
             
@@ -611,7 +608,6 @@
                 document.getElementById("score-avg-today").innerText = "{:.2f}".format(avg_daily)
                 document.getElementById("score-avg-all").innerText = "{:.2f}".format(avg_all_time)
 
-            # Apply persistent glowing effects based on today's levels
             levels = get_current_levels(today)
             
             for qt in QUESTION_TYPES:
@@ -627,7 +623,6 @@
             else:
                 avg_el.classList.remove("glow-text")
 
-            # Check Load More State
             required_correct = int(len(state.questions) * REQUIRED_CORRECT_RATIO)
             btn = document.getElementById("btn-load-more")
             
