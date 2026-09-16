@@ -78,37 +78,44 @@
 
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
-        <div class="flex flex-wrap justify-center gap-4 md:gap-8 w-full">
+        <div class="flex flex-wrap justify-center gap-3 md:gap-6 w-full">
             <!-- Score Blocks -->
-            <div class="flex flex-col items-center min-w-[110px] px-2">
+            <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
                 <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
-                    <span id="score-a-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-a-all">0</span>)</span>
+                    <span id="score-base_conversion-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[110px] px-2">
-                <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>arithmetic</span>
+            <div class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>addition</span>
                 <div class="text-2xl font-bold text-purple-900 flex items-baseline gap-1">
-                    <span id="score-b-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-b-all">0</span>)</span>
+                    <span id="score-binary_addition-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-binary_addition-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[110px] px-2">
+            <div class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-indigo-900 text-center leading-tight h-8">Binary<br>shift</span>
+                <div class="text-2xl font-bold text-indigo-900 flex items-baseline gap-1">
+                    <span id="score-binary_shift-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-binary_shift-all">0</span>)</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-teal-900 text-center leading-tight h-8">Unit<br>conversion</span>
                 <div class="text-2xl font-bold text-teal-900 flex items-baseline gap-1">
-                    <span id="score-c-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-c-all">0</span>)</span>
+                    <span id="score-unit_conversion-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[110px] px-2">
+            <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-orange-900 text-center leading-tight h-8">Number of<br>values</span>
                 <div class="text-2xl font-bold text-orange-900 flex items-baseline gap-1">
-                    <span id="score-d-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-d-all">0</span>)</span>
+                    <span id="score-number_of_values-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[110px] px-2">
+            <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-green-900 text-center leading-tight h-8"><br>Average</span>
                 <div class="text-2xl font-bold text-green-900 flex items-baseline gap-1">
                     <span id="score-avg-today" class="score-val">0.00</span>
@@ -149,17 +156,34 @@
         # ==========================================
         # CONSTANTS & CONFIGURATION
         # ==========================================
-        QUESTION_TYPES = ("a", "b", "c", "d")
+        QUESTION_TYPES = (
+            "base_conversion",
+            "binary_addition",
+            "binary_shift",
+            "unit_conversion",
+            "number_of_values",
+        )
+        
+        # Relative weights for question types
+        QUESTION_TYPE_WEIGHTS = {
+            "base_conversion": 1.0,
+            "binary_addition": 1.0,
+            "binary_shift": 1.0,
+            "unit_conversion": 1.0,
+            "number_of_values": 1.0,
+        }
+        
         QUESTION_BATCH_SIZE = 20
         FLOAT_TOLERANCE = 0.01
         REQUIRED_CORRECT_RATIO = 0.75
         STATE_KEY = "cs_maths_state"
 
         QUESTION_TYPE_DETAILS = {
-            "a": {"label": "Base conversion",   "bg_color": "bg-blue-900"},
-            "b": {"label": "Binary arithmetic", "bg_color": "bg-purple-900"},
-            "c": {"label": "Unit conversion",   "bg_color": "bg-teal-900"},
-            "d": {"label": "Number of values",  "bg_color": "bg-orange-900"},
+            "base_conversion":   {"label": "Base conversion",   "bg_color": "bg-blue-900"},
+            "binary_addition":   {"label": "Binary addition",   "bg_color": "bg-purple-900"},
+            "binary_shift":      {"label": "Binary shift",      "bg_color": "bg-indigo-900"},
+            "unit_conversion":   {"label": "Unit conversion",   "bg_color": "bg-teal-900"},
+            "number_of_values":  {"label": "Number of values",  "bg_color": "bg-orange-900"},
         }
 
         UNIT_VALUES = {
@@ -182,6 +206,13 @@
             "kilobyte": "kilobytes",
             "megabyte": "megabytes", 
             "gigabyte": "gigabytes",
+        }
+
+        # Legacy Migration Map
+        LEGACY_TYPE_MAP = {
+            "a": "base_conversion",
+            "c": "unit_conversion",
+            "d": "number_of_values",
         }
 
         # ==========================================
@@ -214,9 +245,21 @@
 
             @classmethod
             def from_dict(cls, data):
+                q_type = data["q_type"]
+                prompt = data["prompt"]
+
+                # Migrations from legacy single letter names
+                if q_type in LEGACY_TYPE_MAP:
+                    q_type = LEGACY_TYPE_MAP[q_type]
+                elif q_type == "b":
+                    if "shift by" in prompt.lower():
+                        q_type = "binary_shift"
+                    else:
+                        q_type = "binary_addition"
+
                 return cls(
-                    data["q_type"],
-                    data["prompt"],
+                    q_type,
+                    prompt,
                     data["v_type"],
                     data["expected"],
                     data.get("answer", ""),
@@ -228,6 +271,19 @@
         # ==========================================
         # HELPERS & FORMATTERS
         # ==========================================
+        def choose_weighted_question_type():
+            total_weight = 0.0
+            for qt in QUESTION_TYPES:
+                total_weight += QUESTION_TYPE_WEIGHTS.get(qt, 1.0)
+                
+            r = random.random() * total_weight
+            cumulative = 0.0
+            for qt in QUESTION_TYPES:
+                cumulative += QUESTION_TYPE_WEIGHTS.get(qt, 1.0)
+                if r <= cumulative:
+                    return qt
+            return QUESTION_TYPES[0]
+
         def singular_or_plural(count, singular, plural):
             if count == 1:
                 return singular
@@ -285,7 +341,7 @@
             daily_scores = {qt: 0 for qt in QUESTION_TYPES}
             
             for q in state.questions:
-                if q.date_awarded == today:
+                if q.date_awarded == today and q.question_type in daily_scores:
                     daily_scores[q.question_type] += 1
             
             levels = {}
@@ -385,7 +441,7 @@
                 expected = format_hexadecimal(value).lower()
                 
             prompt = "Convert " + representations[source_base] + " from " + source_base + " to " + target_base + "."
-            return Question("a", prompt, v_type, expected)
+            return Question("base_conversion", prompt, v_type, expected)
 
         def generate_binary_addition_question():
             term_count = random.choice([2, 3])
@@ -401,7 +457,7 @@
                 binary_values.append(format_binary(value))
 
             prompt = "Add these 8-bit binary numbers:\n  " + "\n+ ".join(binary_values)
-            return Question("b", prompt, "binary_string", format_binary(total))
+            return Question("binary_addition", prompt, "binary_string", format_binary(total))
 
         def generate_bit_shift_question():
             direction = random.choice(["left", "right"])
@@ -416,11 +472,7 @@
                 result = value >> shift
 
             prompt = "Apply a " + direction + " shift by " + str(shift) + " to the 8-bit binary number " + format_binary(value) + ". Give the result in binary."
-            return Question("b", prompt, "binary_string", format_binary(result))
-
-        def generate_binary_arithmetic_question():
-            gen = random.choice([generate_binary_addition_question, generate_bit_shift_question])
-            return gen()
+            return Question("binary_shift", prompt, "binary_string", format_binary(result))
 
         def generate_unit_conversion_question():
             unit_keys = list(UNIT_VALUES.keys())
@@ -437,31 +489,31 @@
             binary_result = amount * UNIT_VALUES_BINARY[source_unit] / UNIT_VALUES_BINARY[target_unit]
 
             prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
-            return Question("c", prompt, "number_list", [decimal_result, binary_result])
+            return Question("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
 
         def generate_bit_capacity_question():
             bits = random.randint(1, 8)
             bit_label = singular_or_plural(bits, "bit", "bits")
             prompt = "How many different values can be represented using " + str(bits) + " " + bit_label + "?"
-            return Question("d", prompt, "integer", 2**bits)
+            return Question("number_of_values", prompt, "integer", 2**bits)
 
         def generate_denary_digit_capacity_question():
             digits = random.randint(1, 6)
             digit_label = singular_or_plural(digits, "digit", "digits")
             prompt = "How many different values can be represented using " + str(digits) + " denary " + digit_label + "?"
-            return Question("d", prompt, "integer", 10**digits)
+            return Question("number_of_values", prompt, "integer", 10**digits)
 
         def generate_bit_highest_value_question():
             bits = random.randint(1, 8)
             bit_label = singular_or_plural(bits, "bit", "bits")
             prompt = "What is the highest value that can be represented with " + str(bits) + " " + bit_label + "?"
-            return Question("d", prompt, "integer", 2**bits - 1)
+            return Question("number_of_values", prompt, "integer", 2**bits - 1)
 
         def generate_denary_highest_value_question():
             digits = random.randint(1, 6)
             digit_label = singular_or_plural(digits, "digit", "digits")
             prompt = "What is the highest value that can be represented with " + str(digits) + " denary " + digit_label + "?"
-            return Question("d", prompt, "integer", 10**digits - 1)
+            return Question("number_of_values", prompt, "integer", 10**digits - 1)
 
         def generate_capacity_question():
             if random.random() < 0.5:
@@ -471,10 +523,11 @@
             return gen()
 
         QUESTION_GENERATORS = {
-            "a": generate_base_conversion_question,
-            "b": generate_binary_arithmetic_question,
-            "c": generate_unit_conversion_question,
-            "d": generate_capacity_question,
+            "base_conversion": generate_base_conversion_question,
+            "binary_addition": generate_binary_addition_question,
+            "binary_shift":    generate_bit_shift_question,
+            "unit_conversion": generate_unit_conversion_question,
+            "number_of_values": generate_capacity_question,
         }
 
         # ==========================================
@@ -509,6 +562,8 @@
                 for q_data in data.get("questions", []):
                     state.questions.append(Question.from_dict(q_data))
                     
+                # Force immediate re-save to permanently commit legacy migrations to storage
+                save_state()
                 return True
             except Exception:
                 return False
@@ -523,7 +578,7 @@
             daily_scores = {qt: 0 for qt in QUESTION_TYPES}
                 
             for q in state.questions:
-                if q.date_awarded:
+                if q.date_awarded and q.question_type in all_time_scores:
                     all_time_scores[q.question_type] += 1
                     if q.date_awarded == today:
                         daily_scores[q.question_type] += 1
@@ -582,7 +637,8 @@
                 btn.disabled = False
 
         def create_question_element(question):
-            bg_color = QUESTION_TYPE_DETAILS[question.question_type]["bg_color"]
+            details = QUESTION_TYPE_DETAILS.get(question.question_type, QUESTION_TYPE_DETAILS["base_conversion"])
+            bg_color = details["bg_color"]
 
             row = document.createElement("div")
             row.className = "flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm"
@@ -643,7 +699,7 @@
         def append_questions(count):
             container = document.getElementById("questions-container")
             for _ in range(count):
-                q_type = random.choice(QUESTION_TYPES)
+                q_type = choose_weighted_question_type()
                 question = QUESTION_GENERATORS[q_type]()
                 state.questions.append(question)
                 
