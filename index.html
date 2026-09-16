@@ -20,7 +20,7 @@
 <body class="bg-gray-50 text-gray-900 m-0 p-0 flex flex-col min-h-screen">
 
     <!-- Modal overlay for Name Input -->
-    <div id="name-modal" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50">
+    <div id="name-modal" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] flex flex-col gap-4">
             <h2 class="text-xl font-bold">Start your session</h2>
             <p class="text-sm text-gray-600">Enter your name to begin.</p>
@@ -39,6 +39,18 @@
 
             <div class="flex justify-end mt-2">
                 <button id="btn-start" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal overlay for Start Over Confirmation -->
+    <div id="reset-modal" class="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] flex flex-col gap-4">
+            <h2 class="text-xl font-bold text-red-600">Start Over?</h2>
+            <p class="text-sm text-gray-700">Are you sure you want to start over? All your current questions and scores will be permanently lost.</p>
+            <div class="flex justify-end gap-3 mt-2">
+                <button id="btn-cancel-reset" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded transition">Cancel</button>
+                <button id="btn-confirm-reset" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition">Yes, Start Over</button>
             </div>
         </div>
     </div>
@@ -69,9 +81,14 @@
             </div>
         </div>
         
-        <div class="flex items-center gap-2 max-w-4xl mx-auto w-full px-2">
-            <span class="text-lg">Student:</span>
-            <span id="label-student" class="text-lg font-bold">—</span>
+        <div class="flex items-center max-w-4xl mx-auto w-full px-2">
+            <div>
+                <span class="text-lg">Student:</span>
+                <span id="label-student" class="text-lg font-bold">—</span>
+            </div>
+            <button id="btn-start-over" class="ml-auto bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold py-1.5 px-3 rounded transition hidden">
+                Start Over
+            </button>
         </div>
     </div>
 
@@ -90,7 +107,8 @@
 
     <script type="mpy">
         import random
-        from pyscript import document
+        import json
+        from pyscript import document, window
 
         # ==========================================
         # CONSTANTS & CONFIGURATION
@@ -99,6 +117,7 @@
         QUESTION_BATCH_SIZE = 20
         FLOAT_TOLERANCE = 0.01
         REQUIRED_CORRECT_RATIO = 0.75
+        STATE_KEY = "cs_maths_state"
 
         QUESTION_TYPE_DETAILS = {
             "a": {"label": "Base conversion",   "bg_color": "bg-blue-900"},
@@ -136,18 +155,37 @@
             def __init__(self):
                 self.firstname = ""
                 self.lastname = ""
-                self.scores = {}
-                for qt in QUESTION_TYPES:
-                    self.scores[qt] = 0
+                self.scores = {qt: 0 for qt in QUESTION_TYPES}
+                self.questions = []
 
         class Question:
-            def __init__(self, question_type, prompt, validator):
+            def __init__(self, question_type, prompt, validator_type, expected, user_answer=""):
                 self.question_type = question_type
                 self.prompt = prompt
-                self.validator = validator
+                self.validator_type = validator_type
+                self.expected = expected
+                self.user_answer = user_answer
+
+            def to_dict(self):
+                return {
+                    "q_type": self.question_type,
+                    "prompt": self.prompt,
+                    "v_type": self.validator_type,
+                    "expected": self.expected,
+                    "answer": self.user_answer
+                }
+
+            @classmethod
+            def from_dict(cls, data):
+                return cls(
+                    data["q_type"],
+                    data["prompt"],
+                    data["v_type"],
+                    data["expected"],
+                    data.get("answer", "")
+                )
 
         state = AppState()
-        total_questions_loaded = 0
 
         # ==========================================
         # HELPERS & FORMATTERS
@@ -188,73 +226,59 @@
             return False
 
         # ==========================================
-        # VALIDATORS
+        # VALIDATION PARSER
         # ==========================================
-        def integer_validator(expected):
-            def validate(answer):
+        def validate_answer(v_type, expected, answer):
+            if not answer:
+                return False
+            answer = answer.strip()
+            
+            if v_type == "integer":
                 try:
-                    return int(answer.strip()) == expected
+                    return int(answer) == expected
                 except ValueError:
                     return False
-            return validate
-
-        def binary_validator(expected):
-            expected_binary = format_binary(expected)
-            def validate(answer):
-                cleaned = answer.strip()
-                if len(cleaned) != 8:
+                    
+            elif v_type == "binary_string":
+                if len(answer) != 8:
                     return False
-                for c in cleaned:
+                for c in answer:
                     if c != "0" and c != "1":
                         return False
-                return cleaned == expected_binary
-            return validate
-
-        def hexadecimal_validator(expected):
-            expected_hexadecimal = format_hexadecimal(expected).lower()
-            def validate(answer):
-                return normalise_hexadecimal(answer) == expected_hexadecimal
-            return validate
-
-        def float_validator(expected_values):
-            def validate(answer):
+                return answer == expected
+                
+            elif v_type == "hex_string":
+                return normalise_hexadecimal(answer) == expected
+                
+            elif v_type == "number_list":
                 parsed = parse_float(answer)
+                
+                # Check for integer match first if all expected are whole numbers
+                all_int = True
+                for v in expected:
+                    if float(v) != int(float(v)):
+                        all_int = False
+                        break
+                        
+                if all_int:
+                    try:
+                        int_ans = int(answer)
+                        int_expected = []
+                        for v in expected:
+                            int_expected.append(int(v))
+                        if int_ans in int_expected:
+                            return True
+                    except ValueError:
+                        pass
+                
                 if parsed is None:
                     return False
-                return is_close_to_any(parsed, expected_values)
-            return validate
-
-        def number_validator(expected_values):
-            all_int = True
-            for value in expected_values:
-                f_val = float(value)
-                if f_val != int(f_val):
-                    all_int = False
-                    break
-
-            if all_int:
-                integer_values = set()
-                for value in expected_values:
-                    integer_values.add(int(value))
-
-                def validate(answer):
-                    cleaned = answer.strip()
-                    try:
-                        integer_answer = int(cleaned)
-                        return integer_answer in integer_values
-                    except ValueError:
-                        parsed = parse_float(cleaned)
-                        if parsed is None:
-                            return False
-                        float_ints = []
-                        for v in integer_values:
-                            float_ints.append(float(v))
-                        return is_close_to_any(parsed, float_ints)
-                return validate
-            return float_validator(expected_values)
+                return is_close_to_any(parsed, expected)
+                
+            return False
 
         # ==========================================
-        # GENERATORS
+        # GENERATORS (Refactored to return serializable types)
         # ==========================================
         def generate_base_conversion_question():
             value = random.randint(0, 255)
@@ -271,13 +295,19 @@
                 "denary": str(value),
                 "hexadecimal": format_hexadecimal(value),
             }
-            validators = {
-                "binary": binary_validator(value),
-                "denary": integer_validator(value),
-                "hexadecimal": hexadecimal_validator(value),
-            }
+            
+            if target_base == "binary":
+                v_type = "binary_string"
+                expected = format_binary(value)
+            elif target_base == "denary":
+                v_type = "integer"
+                expected = value
+            else:
+                v_type = "hex_string"
+                expected = format_hexadecimal(value).lower()
+                
             prompt = "Convert " + representations[source_base] + " from " + source_base + " to " + target_base + "."
-            return Question("a", prompt, validators[target_base])
+            return Question("a", prompt, v_type, expected)
 
         def generate_binary_addition_question():
             term_count = random.choice([2, 3])
@@ -294,7 +324,7 @@
                 binary_values.append(format_binary(value))
 
             prompt = "Add these 8-bit binary numbers:\n  " + "\n+ ".join(binary_values)
-            return Question("b", prompt, binary_validator(total))
+            return Question("b", prompt, "binary_string", format_binary(total))
 
         def generate_bit_shift_question():
             direction = random.choice(["left", "right"])
@@ -309,7 +339,7 @@
                 result = value >> shift
 
             prompt = "Apply a " + direction + " shift by " + str(shift) + " to the 8-bit binary number " + format_binary(value) + ". Give the result in binary."
-            return Question("b", prompt, binary_validator(result))
+            return Question("b", prompt, "binary_string", format_binary(result))
 
         def generate_binary_arithmetic_question():
             generators = [generate_binary_addition_question, generate_bit_shift_question]
@@ -331,31 +361,31 @@
             binary_result = amount * UNIT_VALUES_BINARY[source_unit] / UNIT_VALUES_BINARY[target_unit]
 
             prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
-            return Question("c", prompt, number_validator([decimal_result, binary_result]))
+            return Question("c", prompt, "number_list", [decimal_result, binary_result])
 
         def generate_bit_capacity_question():
             bits = random.randint(1, 8)
             bit_label = singular_or_plural(bits, "bit", "bits")
             prompt = "How many different values can be represented using " + str(bits) + " " + bit_label + "?"
-            return Question("d", prompt, integer_validator(2**bits))
+            return Question("d", prompt, "integer", 2**bits)
 
         def generate_denary_digit_capacity_question():
             digits = random.randint(1, 6)
             digit_label = singular_or_plural(digits, "digit", "digits")
             prompt = "How many different values can be represented using " + str(digits) + " denary " + digit_label + "?"
-            return Question("d", prompt, integer_validator(10**digits))
+            return Question("d", prompt, "integer", 10**digits)
 
         def generate_bit_highest_value_question():
             bits = random.randint(1, 8)
             bit_label = singular_or_plural(bits, "bit", "bits")
             prompt = "What is the highest value that can be represented with " + str(bits) + " " + bit_label + "?"
-            return Question("d", prompt, integer_validator(2**bits - 1))
+            return Question("d", prompt, "integer", 2**bits - 1)
 
         def generate_denary_highest_value_question():
             digits = random.randint(1, 6)
             digit_label = singular_or_plural(digits, "digit", "digits")
             prompt = "What is the highest value that can be represented with " + str(digits) + " denary " + digit_label + "?"
-            return Question("d", prompt, integer_validator(10**digits - 1))
+            return Question("d", prompt, "integer", 10**digits - 1)
 
         def generate_capacity_question():
             if random.random() < 0.5:
@@ -372,15 +402,62 @@
         }
 
         # ==========================================
+        # STATE MANAGEMENT (LocalStorage)
+        # ==========================================
+        def save_state():
+            if not state.firstname:
+                return
+            
+            q_dicts = []
+            for q in state.questions:
+                q_dicts.append(q.to_dict())
+                
+            data = {
+                "firstname": state.firstname,
+                "lastname": state.lastname,
+                "questions": q_dicts
+            }
+            window.localStorage.setItem(STATE_KEY, json.dumps(data))
+
+        def load_state():
+            raw = window.localStorage.getItem(STATE_KEY)
+            if not raw:
+                return False
+                
+            try:
+                data = json.loads(raw)
+                state.firstname = data.get("firstname", "")
+                state.lastname = data.get("lastname", "")
+                
+                state.questions = []
+                for q_data in data.get("questions", []):
+                    state.questions.append(Question.from_dict(q_data))
+                    
+                return True
+            except Exception:
+                return False
+
+        # ==========================================
         # UI / DOM MANIPULATION
         # ==========================================
+        def recalculate_scores():
+            for qt in QUESTION_TYPES:
+                state.scores[qt] = 0
+                
+            for q in state.questions:
+                if validate_answer(q.validator_type, q.expected, q.user_answer):
+                    state.scores[q.question_type] += 1
+
         def refresh_dashboard():
-            name_display = (state.firstname + " " + state.lastname).strip()
+            recalculate_scores()
             
+            name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
+                document.getElementById("btn-start-over").classList.remove("hidden")
             else:
                 document.getElementById("label-student").innerText = "—"
+                document.getElementById("btn-start-over").classList.add("hidden")
 
             total_score = 0
             for qt in QUESTION_TYPES:
@@ -388,20 +465,17 @@
                 total_score += score
                 document.getElementById("score-" + qt).innerText = str(score)
 
-            avg = total_score / len(QUESTION_TYPES)
-            document.getElementById("score-avg").innerText = "{:.2f}".format(avg)
+            if len(QUESTION_TYPES) > 0:
+                avg = total_score / len(QUESTION_TYPES)
+                document.getElementById("score-avg").innerText = "{:.2f}".format(avg)
 
-            required_correct = int(total_questions_loaded * REQUIRED_CORRECT_RATIO)
+            required_correct = int(len(state.questions) * REQUIRED_CORRECT_RATIO)
             btn = document.getElementById("btn-load-more")
             
             if total_score < required_correct:
                 btn.disabled = True
             else:
                 btn.disabled = False
-
-        def update_score(question_type, delta):
-            state.scores[question_type] += delta
-            refresh_dashboard()
 
         def create_question_element(question):
             bg_color = QUESTION_TYPE_DETAILS[question.question_type]["bg_color"]
@@ -420,47 +494,51 @@
             input_field.type = "text"
             input_field.placeholder = "Type answer"
             input_field.className = "w-full md:w-48 p-2 px-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-base transition-colors"
+            input_field.value = question.user_answer
 
             row.append(bar, prompt_div, input_field)
 
-            is_correct_state = [False]
+            def apply_style(is_correct):
+                if is_correct:
+                    input_field.classList.add("bg-green-100", "border-green-500", "text-green-900")
+                    input_field.classList.remove("border-gray-300")
+                else:
+                    input_field.classList.remove("bg-green-100", "border-green-500", "text-green-900")
+                    input_field.classList.add("border-gray-300")
+
+            # Apply initial styling on load
+            apply_style(validate_answer(question.validator_type, question.expected, question.user_answer))
 
             def on_input(e):
-                val = input_field.value.strip()
-                is_correct = question.validator(val)
+                question.user_answer = input_field.value
+                save_state()
+                refresh_dashboard()
                 
-                if is_correct != is_correct_state[0]:
-                    is_correct_state[0] = is_correct
-                    delta = 1 if is_correct else -1
-                    update_score(question.question_type, delta)
-                    
-                    if is_correct:
-                        input_field.classList.add("bg-green-100", "border-green-500", "text-green-900")
-                        input_field.classList.remove("border-gray-300")
-                    else:
-                        input_field.classList.remove("bg-green-100", "border-green-500", "text-green-900")
-                        input_field.classList.add("border-gray-300")
+                # Check style for this specific row
+                current_is_correct = validate_answer(question.validator_type, question.expected, question.user_answer)
+                apply_style(current_is_correct)
                         
             input_field.addEventListener("input", on_input)
             return row
 
         def append_questions(count):
-            global total_questions_loaded
             container = document.getElementById("questions-container")
-            
             for _ in range(count):
                 q_type = random.choice(QUESTION_TYPES)
                 question = QUESTION_GENERATORS[q_type]()
+                state.questions.append(question)
+                
                 row_el = create_question_element(question)
                 container.append(row_el)
-                total_questions_loaded += 1
+                
+            save_state()
+            refresh_dashboard()
 
         # ==========================================
         # EVENT LISTENERS & INITIALIZATION
         # ==========================================
         def handle_load_more(e):
             append_questions(QUESTION_BATCH_SIZE)
-            refresh_dashboard()
 
         def start_session(e):
             fname_input = document.getElementById("input-firstname")
@@ -471,28 +549,62 @@
             err_fname = document.getElementById("error-firstname")
             err_lname = document.getElementById("error-lastname")
 
-            if not fname:
-                err_fname.classList.remove("hidden")
-            else:
-                err_fname.classList.add("hidden")
+            if not fname: err_fname.classList.remove("hidden")
+            else: err_fname.classList.add("hidden")
             
-            if not lname:
-                err_lname.classList.remove("hidden")
-            else:
-                err_lname.classList.add("hidden")
+            if not lname: err_lname.classList.remove("hidden")
+            else: err_lname.classList.add("hidden")
 
             if fname and lname:
                 state.firstname = fname
                 state.lastname = lname
                 document.getElementById("name-modal").classList.add("hidden")
-                refresh_dashboard()
+                
+                if len(state.questions) == 0:
+                    append_questions(QUESTION_BATCH_SIZE)
+                else:
+                    save_state()
+                    refresh_dashboard()
 
+        def prompt_reset(e):
+            document.getElementById("reset-modal").classList.remove("hidden")
+
+        def cancel_reset(e):
+            document.getElementById("reset-modal").classList.add("hidden")
+
+        def confirm_reset(e):
+            window.localStorage.removeItem(STATE_KEY)
+            state.firstname = ""
+            state.lastname = ""
+            state.questions = []
+            
+            document.getElementById("questions-container").innerHTML = ""
+            document.getElementById("input-firstname").value = ""
+            document.getElementById("input-lastname").value = ""
+            
+            document.getElementById("reset-modal").classList.add("hidden")
+            document.getElementById("name-modal").classList.remove("hidden")
+            refresh_dashboard()
+
+        # Wire up buttons
         document.getElementById("btn-start").onclick = start_session
         document.getElementById("btn-load-more").onclick = handle_load_more
         document.getElementById("btn-load-more").innerText = "Load " + str(QUESTION_BATCH_SIZE) + " more questions"
+        
+        document.getElementById("btn-start-over").onclick = prompt_reset
+        document.getElementById("btn-cancel-reset").onclick = cancel_reset
+        document.getElementById("btn-confirm-reset").onclick = confirm_reset
 
-        append_questions(QUESTION_BATCH_SIZE)
-        refresh_dashboard()
+        # Boot routine
+        if load_state():
+            # Session exists! Hydrate UI.
+            container = document.getElementById("questions-container")
+            for q in state.questions:
+                container.append(create_question_element(q))
+            refresh_dashboard()
+        else:
+            # New user
+            document.getElementById("name-modal").classList.remove("hidden")
 
     </script>
 </body>
