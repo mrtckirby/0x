@@ -164,6 +164,9 @@
             "number_of_values",
         )
         
+        # Toggle to permit or prevent multi-column carries in binary addition questions
+        ALLOW_MULTI_COLUMN_CARRIES = False
+
         QUESTION_TYPE_WEIGHTS = {
             "base_conversion": 1.0,
             "binary_addition": 1.0,
@@ -173,8 +176,8 @@
         }
         
         QUESTION_BATCH_SIZE = 20
-        RELATIVE_TOLERANCE = 0.02  # Accept answers within 2% of target value
-        ABSOLUTE_TOLERANCE = 1e-6  # Absolute threshold for near-zero values
+        RELATIVE_TOLERANCE = 0.02
+        ABSOLUTE_TOLERANCE = 1e-6
         REQUIRED_CORRECT_RATIO = 0.75
         STATE_KEY = "cs_maths_state"
 
@@ -319,6 +322,18 @@
                     return True
             return False
 
+        def has_multi_column_carry(values):
+            """Checks if adding a list of integers causes a column sum > 2 at any bit position"""
+            carry = 0
+            for i in range(8):
+                bit_sum = carry
+                for v in values:
+                    bit_sum += (v >> i) & 1
+                if bit_sum > 2:
+                    return True
+                carry = bit_sum >> 1
+            return False
+
         # ==========================================
         # STREAK CALCULATIONS
         # ==========================================
@@ -450,7 +465,9 @@
                 for _ in range(term_count):
                     values.append(random.randint(0, 255))
                 total = sum(values)
-                if total <= 255: break
+                if total <= 255:
+                    if ALLOW_MULTI_COLUMN_CARRIES or not has_multi_column_carry(values):
+                        break
 
             binary_values = []
             for value in values:
