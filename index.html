@@ -78,27 +78,42 @@
 
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
-        <div class="flex flex-wrap justify-center gap-6 md:gap-12 w-full">
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 w-full">
             <!-- Score Blocks -->
-            <div class="flex flex-col items-center w-24">
+            <div class="flex flex-col items-center min-w-[110px] px-2">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
-                <span id="score-a" class="score-val text-2xl font-bold text-blue-900">0</span>
+                <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
+                    <span id="score-a-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-a-all">0</span>)</span>
+                </div>
             </div>
-            <div class="flex flex-col items-center w-24">
+            <div class="flex flex-col items-center min-w-[110px] px-2">
                 <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>arithmetic</span>
-                <span id="score-b" class="score-val text-2xl font-bold text-purple-900">0</span>
+                <div class="text-2xl font-bold text-purple-900 flex items-baseline gap-1">
+                    <span id="score-b-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-b-all">0</span>)</span>
+                </div>
             </div>
-            <div class="flex flex-col items-center w-24">
+            <div class="flex flex-col items-center min-w-[110px] px-2">
                 <span class="text-[11px] font-semibold text-teal-900 text-center leading-tight h-8">Unit<br>conversion</span>
-                <span id="score-c" class="score-val text-2xl font-bold text-teal-900">0</span>
+                <div class="text-2xl font-bold text-teal-900 flex items-baseline gap-1">
+                    <span id="score-c-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-c-all">0</span>)</span>
+                </div>
             </div>
-            <div class="flex flex-col items-center w-24">
+            <div class="flex flex-col items-center min-w-[110px] px-2">
                 <span class="text-[11px] font-semibold text-orange-900 text-center leading-tight h-8">Number of<br>values</span>
-                <span id="score-d" class="score-val text-2xl font-bold text-orange-900">0</span>
+                <div class="text-2xl font-bold text-orange-900 flex items-baseline gap-1">
+                    <span id="score-d-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-d-all">0</span>)</span>
+                </div>
             </div>
-            <div class="flex flex-col items-center w-24">
+            <div class="flex flex-col items-center min-w-[110px] px-2">
                 <span class="text-[11px] font-semibold text-green-900 text-center leading-tight h-8"><br>Average</span>
-                <span id="score-avg" class="score-val text-2xl font-bold text-green-900">0.00</span>
+                <div class="text-2xl font-bold text-green-900 flex items-baseline gap-1">
+                    <span id="score-avg-today" class="score-val">0.00</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-avg-all">0.00</span>)</span>
+                </div>
             </div>
         </div>
         
@@ -176,7 +191,6 @@
             def __init__(self):
                 self.firstname = ""
                 self.lastname = ""
-                self.scores = {qt: 0 for qt in QUESTION_TYPES}
                 self.questions = []
 
         class Question:
@@ -253,8 +267,6 @@
         # STREAK CALCULATIONS
         # ==========================================
         def get_streak_level(score, initial=3):
-            """Returns the current streak tier. 0 if below initial.
-               Tiers gap doubles each time: e.g. target = 3, 9, 21, 45..."""
             if score < initial:
                 return 0
                 
@@ -270,7 +282,6 @@
             return level
 
         def get_current_levels(today):
-            """Analyzes questions to find the daily scores and streak levels"""
             daily_scores = {qt: 0 for qt in QUESTION_TYPES}
             
             for q in state.questions:
@@ -281,19 +292,16 @@
             for qt in QUESTION_TYPES:
                 levels[qt] = get_streak_level(daily_scores[qt], 3)
                 
-            # Average relies on daily scores
             daily_avg = sum(daily_scores.values()) / len(QUESTION_TYPES)
             levels["avg"] = get_streak_level(daily_avg, 3)
             
             return levels
 
         def trigger_pop(el_id):
-            """Applies a CSS animation class via a small DOM reflow hack"""
             el = document.getElementById(el_id)
             if not el: return
             
             el.classList.remove("pop-anim")
-            # Forcing browser reflow so the animation restarts immediately
             _ = el.offsetWidth 
             el.classList.add("pop-anim")
 
@@ -509,13 +517,16 @@
         # UI / DOM MANIPULATION
         # ==========================================
         def refresh_dashboard():
-            # Recalculate lifetime scores
-            for qt in QUESTION_TYPES:
-                state.scores[qt] = 0
+            today = window.Date.new().toDateString()
+            
+            all_time_scores = {qt: 0 for qt in QUESTION_TYPES}
+            daily_scores = {qt: 0 for qt in QUESTION_TYPES}
                 
             for q in state.questions:
                 if q.date_awarded:
-                    state.scores[q.question_type] += 1
+                    all_time_scores[q.question_type] += 1
+                    if q.date_awarded == today:
+                        daily_scores[q.question_type] += 1
             
             # Setup User Display
             name_display = (state.firstname + " " + state.lastname).strip()
@@ -527,28 +538,35 @@
                 document.getElementById("btn-start-over").classList.add("hidden")
 
             # Update textual scores
-            total_score = 0
+            total_all_time = 0
+            total_daily = 0
+            
             for qt in QUESTION_TYPES:
-                score = state.scores[qt]
-                total_score += score
-                document.getElementById("score-" + qt).innerText = str(score)
+                all_time = all_time_scores[qt]
+                daily = daily_scores[qt]
+                total_all_time += all_time
+                total_daily += daily
+                
+                document.getElementById("score-" + qt + "-today").innerText = str(daily)
+                document.getElementById("score-" + qt + "-all").innerText = str(all_time)
 
             if len(QUESTION_TYPES) > 0:
-                avg = total_score / len(QUESTION_TYPES)
-                document.getElementById("score-avg").innerText = "{:.2f}".format(avg)
+                avg_all_time = total_all_time / len(QUESTION_TYPES)
+                avg_daily = total_daily / len(QUESTION_TYPES)
+                document.getElementById("score-avg-today").innerText = "{:.2f}".format(avg_daily)
+                document.getElementById("score-avg-all").innerText = "{:.2f}".format(avg_all_time)
 
             # Apply persistent glowing effects based on today's levels
-            today = window.Date.new().toDateString()
             levels = get_current_levels(today)
             
             for qt in QUESTION_TYPES:
-                el = document.getElementById("score-" + qt)
+                el = document.getElementById("score-" + qt + "-today")
                 if levels[qt] > 0:
                     el.classList.add("glow-text")
                 else:
                     el.classList.remove("glow-text")
                     
-            avg_el = document.getElementById("score-avg")
+            avg_el = document.getElementById("score-avg-today")
             if levels["avg"] > 0:
                 avg_el.classList.add("glow-text")
             else:
@@ -558,7 +576,7 @@
             required_correct = int(len(state.questions) * REQUIRED_CORRECT_RATIO)
             btn = document.getElementById("btn-load-more")
             
-            if total_score < required_correct:
+            if total_all_time < required_correct:
                 btn.disabled = True
             else:
                 btn.disabled = False
@@ -592,7 +610,6 @@
                     input_field.classList.remove("bg-green-100", "border-green-500", "text-green-900")
                     input_field.classList.add("border-gray-300")
 
-            # Apply initial styling on load
             apply_style(validate_answer(question.validator_type, question.expected, question.user_answer))
 
             def on_input(e):
@@ -600,7 +617,6 @@
                 is_correct = validate_answer(question.validator_type, question.expected, question.user_answer)
                 apply_style(is_correct)
                 
-                # Check for a new point (Right answers only, cannot be farmed!)
                 if is_correct and not question.date_awarded:
                     today = window.Date.new().toDateString()
                     old_levels = get_current_levels(today)
@@ -611,13 +627,12 @@
                     new_levels = get_current_levels(today)
                     refresh_dashboard()
                     
-                    # Did they cross a new streak threshold just now? Pop animation!
                     for qt in QUESTION_TYPES:
                         if new_levels[qt] > old_levels[qt]:
-                            trigger_pop("score-" + qt)
+                            trigger_pop("score-" + qt + "-today")
                     
                     if new_levels["avg"] > old_levels["avg"]:
-                        trigger_pop("score-avg")
+                        trigger_pop("score-avg-today")
                 else:
                     save_state()
                     refresh_dashboard()
@@ -690,7 +705,6 @@
             document.getElementById("name-modal").classList.remove("hidden")
             refresh_dashboard()
 
-        # Wire up buttons
         document.getElementById("btn-start").onclick = start_session
         document.getElementById("btn-load-more").onclick = handle_load_more
         document.getElementById("btn-load-more").innerText = "Load " + str(QUESTION_BATCH_SIZE) + " more questions"
@@ -699,15 +713,12 @@
         document.getElementById("btn-cancel-reset").onclick = cancel_reset
         document.getElementById("btn-confirm-reset").onclick = confirm_reset
 
-        # Boot routine
         if load_state():
-            # Session exists! Hydrate UI.
             container = document.getElementById("questions-container")
             for q in state.questions:
                 container.append(create_question_element(q))
             refresh_dashboard()
         else:
-            # New user
             document.getElementById("name-modal").classList.remove("hidden")
 
     </script>
