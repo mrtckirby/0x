@@ -39,7 +39,28 @@
             100% { transform: scale(1); }
         }
         
-        /* Ensure spans can scale cleanly */
+        /* Completion Animations */
+        .tick-anim svg {
+            animation: tick-grow-fade 1.0s ease-out forwards;
+        }
+        
+        @keyframes tick-grow-fade {
+            0% { transform: scale(0.5); opacity: 0; }
+            15% { transform: scale(1.5); opacity: 0.6; }
+            100% { transform: scale(3.5); opacity: 0; }
+        }
+
+        .row-exit {
+            animation: slide-out 0.4s ease-in forwards;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        @keyframes slide-out {
+            0% { opacity: 1; max-height: 150px; margin-bottom: 1rem; }
+            100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; }
+        }
+
         .score-val {
             display: inline-block;
             transition: text-shadow 0.3s ease;
@@ -151,15 +172,9 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 overflow-auto p-4 md:p-8">
+    <div class="flex-1 overflow-auto p-4 md:p-8 pb-32">
         <div class="max-w-4xl mx-auto flex flex-col gap-4" id="questions-container">
             <!-- Questions dynamically injected here -->
-        </div>
-
-        <div class="max-w-4xl mx-auto text-center py-8">
-            <button id="btn-load-more" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded transition" disabled>
-                Load More Questions
-            </button>
         </div>
     </div>
 
@@ -171,12 +186,12 @@
         # ==========================================
         # CONSTANTS & CONFIGURATION
         # ==========================================
-        QUESTION_BATCH_SIZE = 20
+        QUESTION_BATCH_SIZE = 10  # Initial load and active screen size
         RELATIVE_TOLERANCE = 0.02
         ABSOLUTE_TOLERANCE = 1e-6
-        REQUIRED_CORRECT_RATIO = 0.75
         STATE_KEY = "cs_maths_state"
         
+        TIMEOUT_CALLBACKS = []
         ALLOW_MULTI_COLUMN_CARRIES = False
 
         MASTER_CATEGORIES = (
@@ -193,7 +208,6 @@
             "number_of_values":  {"bg_color": "bg-orange-900"},
         }
 
-        # Data map for handling legacy saves seamlessly
         LEGACY_TYPE_MAP = {
             "a": "base_conversion",
             "c": "unit_conversion",
@@ -230,48 +244,16 @@
                 self.firstname = ""
                 self.lastname = ""
                 self.advanced_mode = False
-                self.questions = []
+                self.last_active_date = ""
+                self.daily_scores = {}
+                self.all_time_scores = {}
 
-        class Question:
-            def __init__(self, question_type, prompt, validator_type, expected, user_answer="", date_awarded=None):
+        class QuestionDTO:
+            def __init__(self, question_type, prompt, validator_type, expected):
                 self.question_type = question_type
                 self.prompt = prompt
                 self.validator_type = validator_type
                 self.expected = expected
-                self.user_answer = user_answer
-                self.date_awarded = date_awarded
-
-            def to_dict(self):
-                return {
-                    "q_type": self.question_type,
-                    "prompt": self.prompt,
-                    "v_type": self.validator_type,
-                    "expected": self.expected,
-                    "answer": self.user_answer,
-                    "awarded": self.date_awarded
-                }
-
-            @classmethod
-            def from_dict(cls, data):
-                q_type = data["q_type"]
-                prompt = data["prompt"]
-
-                if q_type in LEGACY_TYPE_MAP:
-                    q_type = LEGACY_TYPE_MAP[q_type]
-                elif q_type == "b":
-                    if "shift by" in prompt.lower():
-                        q_type = "binary_shift"
-                    else:
-                        q_type = "binary_addition"
-
-                return cls(
-                    q_type,
-                    prompt,
-                    data["v_type"],
-                    data["expected"],
-                    data.get("answer", ""),
-                    data.get("awarded", None)
-                )
 
         state = AppState()
 
@@ -321,38 +303,52 @@
                 carry = bit_sum >> 1
             return False
 
+        def focus_next_available_input(current_input):
+            """Advances cursor smoothly to the next available input below."""
+            inputs = document.querySelectorAll(".question-row input[type='text']")
+            
+            curr_idx = -1
+            for i in range(inputs.length):
+                if inputs[i].isSameNode(current_input):
+                    curr_idx = i
+                    break
+            
+            if curr_idx != -1:
+                for i in range(curr_idx + 1, inputs.length):
+                    if not inputs[i].disabled:
+                        inputs[i].focus()
+                        return
+
         # ==========================================
         # STREAK CALCULATIONS
         # ==========================================
         def get_streak_level(score, initial=3):
             if score < initial:
                 return 0
-                
             level = 0
             target = initial
             gap = initial
-            
             while score >= target:
                 level += 1
                 gap *= 2
                 target += gap
-                
             return level
 
-        def get_current_levels(today):
-            daily_scores = {mc: 0 for mc in MASTER_CATEGORIES}
+        def get_current_levels():
+            daily_master_scores = {mc: 0 for mc in MASTER_CATEGORIES}
             
-            for q in state.questions:
-                if q.date_awarded == today:
-                    if q.question_type in QUESTION_CONFIG:
-                        master = QUESTION_CONFIG[q.question_type]["master"]
-                        daily_scores[master] += 1
+            today = window.Date.new().toDateString()
+            if state.last_active_date == today:
+                for q_type, count in state.daily_scores.items():
+                    if q_type in QUESTION_CONFIG:
+                        master = QUESTION_CONFIG[q_type]["master"]
+                        daily_master_scores[master] += count
             
             levels = {}
             for mc in MASTER_CATEGORIES:
-                levels[mc] = get_streak_level(daily_scores[mc], 3)
+                levels[mc] = get_streak_level(daily_master_scores[mc], 3)
                 
-            daily_avg = sum(daily_scores.values()) / len(MASTER_CATEGORIES)
+            daily_avg = sum(daily_master_scores.values()) / len(MASTER_CATEGORIES)
             levels["avg"] = get_streak_level(daily_avg, 3)
             
             return levels
@@ -360,7 +356,6 @@
         def trigger_pop(el_id):
             el = document.getElementById(el_id)
             if not el: return
-            
             el.classList.remove("pop-anim")
             _ = el.offsetWidth 
             el.classList.add("pop-anim")
@@ -369,22 +364,17 @@
         # VALIDATION PARSER
         # ==========================================
         def validate_answer(v_type, expected, answer):
-            if not answer:
-                return False
+            if not answer: return False
             answer = answer.strip()
             
             if v_type == "integer":
-                try:
-                    return int(answer) == expected
-                except ValueError:
-                    return False
+                try: return int(answer) == expected
+                except ValueError: return False
                     
             elif v_type == "binary_string":
-                if len(answer) != 8:
-                    return False
+                if len(answer) != 8: return False
                 for c in answer:
-                    if c != "0" and c != "1":
-                        return False
+                    if c != "0" and c != "1": return False
                 return answer == expected
                 
             elif v_type == "hex_string":
@@ -401,16 +391,13 @@
                 if all_int:
                     try:
                         int_ans = int(answer)
-                        int_expected = []
-                        for v in expected:
-                            int_expected.append(int(v))
+                        int_expected = [int(v) for v in expected]
                         if int_ans in int_expected:
                             return True
                     except ValueError:
                         pass
                 
-                if parsed is None:
-                    return False
+                if parsed is None: return False
                 return is_close_to_any(parsed, expected)
                 
             return False
@@ -422,10 +409,7 @@
             value = random.randint(0, 255)
             bases = ["binary", "denary", "hexadecimal"]
             source_base = random.choice(bases)
-            target_options = []
-            for b in bases:
-                if b != source_base:
-                    target_options.append(b)
+            target_options = [b for b in bases if b != source_base]
             target_base = random.choice(target_options)
 
             representations = {
@@ -445,19 +429,19 @@
                 expected = format_hexadecimal(value).lower()
                 
             prompt = "Convert " + representations[source_base] + " from " + source_base + " to " + target_base + "."
-            return Question("base_conversion", prompt, v_type, expected)
+            return QuestionDTO("base_conversion", prompt, v_type, expected)
 
         def generate_twos_comp_bin_to_den():
             value = random.randint(-128, -1)
             bin_str = format_binary(value & 0xFF)
             prompt = "Convert the Two's Complement 8-bit binary number " + bin_str + " to denary."
-            return Question("twos_comp_bin_to_den", prompt, "integer", value)
+            return QuestionDTO("twos_comp_bin_to_den", prompt, "integer", value)
 
         def generate_twos_comp_den_to_bin():
             value = random.randint(-128, -1)
             bin_str = format_binary(value & 0xFF)
             prompt = "Convert the negative denary number " + str(value) + " to an 8-bit Two's Complement binary number."
-            return Question("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
+            return QuestionDTO("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
 
         def generate_binary_addition_question():
             term_count = random.choice([2, 3])
@@ -470,27 +454,23 @@
                     if ALLOW_MULTI_COLUMN_CARRIES or not has_multi_column_carry(values):
                         break
 
-            binary_values = []
-            for value in values:
-                binary_values.append(format_binary(value))
-
+            binary_values = [format_binary(v) for v in values]
             prompt = "Add these 8-bit binary numbers:\n  " + "\n+ ".join(binary_values)
-            return Question("binary_addition", prompt, "binary_string", format_binary(total))
+            return QuestionDTO("binary_addition", prompt, "binary_string", format_binary(total))
 
         def generate_binary_subtraction_question():
             a = random.randint(0, 255)
             b = random.randint(0, a) # Ensures positive result
             prompt = "Subtract these 8-bit binary numbers:\n  " + format_binary(a) + "\n- " + format_binary(b)
-            return Question("binary_subtraction", prompt, "binary_string", format_binary(a - b))
+            return QuestionDTO("binary_subtraction", prompt, "binary_string", format_binary(a - b))
 
         def generate_binary_multiplication_question():
             while True:
                 a = random.randint(0, 255)
                 b = random.randint(0, 255)
-                if a * b <= 255:
-                    break
+                if a * b <= 255: break
             prompt = "Multiply these 8-bit binary numbers:\n  " + format_binary(a) + "\n* " + format_binary(b)
-            return Question("binary_multiplication", prompt, "binary_string", format_binary(a * b))
+            return QuestionDTO("binary_multiplication", prompt, "binary_string", format_binary(a * b))
 
         def generate_bit_shift_question():
             direction = random.choice(["left", "right"])
@@ -505,24 +485,20 @@
                 result = value >> shift
 
             prompt = "Apply a " + direction + " shift by " + str(shift) + " to the 8-bit binary number " + format_binary(value) + ". Give the result in binary."
-            return Question("binary_shift", prompt, "binary_string", format_binary(result))
+            return QuestionDTO("binary_shift", prompt, "binary_string", format_binary(result))
 
         def generate_unit_conversion_question():
             unit_keys = list(UNIT_VALUES.keys())
             source_unit = random.choice(unit_keys)
-            target_options = []
-            for u in unit_keys:
-                if u != source_unit:
-                    target_options.append(u)
+            target_options = [u for u in unit_keys if u != source_unit]
             target_unit = random.choice(target_options)
 
             amount = random.randint(1, 500)
-
             decimal_result = amount * UNIT_VALUES[source_unit] / UNIT_VALUES[target_unit]
             binary_result = amount * UNIT_VALUES_BINARY[source_unit] / UNIT_VALUES_BINARY[target_unit]
 
             prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
-            return Question("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
+            return QuestionDTO("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
 
         def generate_capacity_question():
             is_bits = random.random() < 0.5
@@ -533,36 +509,33 @@
                 label = "bits" if bits > 1 else "bit"
                 if is_highest:
                     prompt = "What is the highest value that can be represented with " + str(bits) + " " + label + "?"
-                    return Question("number_of_values", prompt, "integer", 2**bits - 1)
+                    return QuestionDTO("number_of_values", prompt, "integer", 2**bits - 1)
                 else:
                     prompt = "How many different values can be represented using " + str(bits) + " " + label + "?"
-                    return Question("number_of_values", prompt, "integer", 2**bits)
+                    return QuestionDTO("number_of_values", prompt, "integer", 2**bits)
             else:
                 digits = random.randint(1, 6)
                 label = "digits" if digits > 1 else "digit"
                 if is_highest:
                     prompt = "What is the highest value that can be represented with " + str(digits) + " denary " + label + "?"
-                    return Question("number_of_values", prompt, "integer", 10**digits - 1)
+                    return QuestionDTO("number_of_values", prompt, "integer", 10**digits - 1)
                 else:
                     prompt = "How many different values can be represented using " + str(digits) + " denary " + label + "?"
-                    return Question("number_of_values", prompt, "integer", 10**digits)
+                    return QuestionDTO("number_of_values", prompt, "integer", 10**digits)
 
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
         # ==========================================
         QUESTION_CONFIG = {
-            # Base Conversion Group
             "base_conversion":       {"master": "base_conversion",   "advanced": False, "weight": 1.0, "generator": generate_base_conversion_question},
             "twos_comp_bin_to_den":  {"master": "base_conversion",   "advanced": True,  "weight": 1.0, "generator": generate_twos_comp_bin_to_den},
             "twos_comp_den_to_bin":  {"master": "base_conversion",   "advanced": True,  "weight": 1.0, "generator": generate_twos_comp_den_to_bin},
 
-            # Binary Arithmetic Group
             "binary_addition":       {"master": "binary_arithmetic", "advanced": False, "weight": 1.0, "generator": generate_binary_addition_question},
             "binary_shift":          {"master": "binary_arithmetic", "advanced": False, "weight": 1.0, "generator": generate_bit_shift_question},
             "binary_subtraction":    {"master": "binary_arithmetic", "advanced": True,  "weight": 1.0, "generator": generate_binary_subtraction_question},
             "binary_multiplication": {"master": "binary_arithmetic", "advanced": True,  "weight": 1.0, "generator": generate_binary_multiplication_question},
 
-            # Unit Conversion & Capacity Groups
             "unit_conversion":       {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_unit_conversion_question},
             "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
         }
@@ -570,7 +543,6 @@
         def choose_weighted_question_type():
             choices = []
             weights = []
-            
             for q_type, config in QUESTION_CONFIG.items():
                 if config["advanced"] and not state.advanced_mode:
                     continue
@@ -585,7 +557,6 @@
                 cumulative += weights[i]
                 if r <= cumulative:
                     return choices[i]
-                    
             return choices[0]
 
         # ==========================================
@@ -594,16 +565,13 @@
         def save_state():
             if not state.firstname:
                 return
-            
-            q_dicts = []
-            for q in state.questions:
-                q_dicts.append(q.to_dict())
-                
             data = {
                 "firstname": state.firstname,
                 "lastname": state.lastname,
                 "advanced_mode": state.advanced_mode,
-                "questions": q_dicts
+                "last_active_date": state.last_active_date,
+                "daily_scores": state.daily_scores,
+                "all_time_scores": state.all_time_scores
             }
             window.localStorage.setItem(STATE_KEY, json.dumps(data))
 
@@ -618,14 +586,41 @@
                 state.lastname = data.get("lastname", "")
                 state.advanced_mode = data.get("advanced_mode", False)
                 
-                # Sync UI toggles
                 document.getElementById("toggle-advanced-top").checked = state.advanced_mode
                 document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
                 
-                state.questions = []
-                for q_data in data.get("questions", []):
-                    state.questions.append(Question.from_dict(q_data))
+                today = window.Date.new().toDateString()
+                
+                if "questions" in data:
+                    state.last_active_date = today
+                    state.all_time_scores = {}
+                    state.daily_scores = {}
                     
+                    for q_data in data["questions"]:
+                        q_type = q_data.get("q_type")
+                        if q_type in LEGACY_TYPE_MAP:
+                            q_type = LEGACY_TYPE_MAP[q_type]
+                        elif q_type == "b":
+                            prompt = q_data.get("prompt", "")
+                            if "shift by" in prompt.lower():
+                                q_type = "binary_shift"
+                            else:
+                                q_type = "binary_addition"
+                                
+                        awarded = q_data.get("awarded")
+                        if awarded:
+                            state.all_time_scores[q_type] = state.all_time_scores.get(q_type, 0) + 1
+                            if awarded == today:
+                                state.daily_scores[q_type] = state.daily_scores.get(q_type, 0) + 1
+                else:
+                    state.last_active_date = data.get("last_active_date", "")
+                    state.daily_scores = data.get("daily_scores", {})
+                    state.all_time_scores = data.get("all_time_scores", {})
+                    
+                    if state.last_active_date != today:
+                        state.last_active_date = today
+                        state.daily_scores = {}
+
                 save_state()
                 return True
             except Exception:
@@ -635,18 +630,19 @@
         # UI / DOM MANIPULATION
         # ==========================================
         def refresh_dashboard():
-            today = window.Date.new().toDateString()
+            all_time_master = {mc: 0 for mc in MASTER_CATEGORIES}
+            daily_master = {mc: 0 for mc in MASTER_CATEGORIES}
             
-            all_time_scores = {mc: 0 for mc in MASTER_CATEGORIES}
-            daily_scores = {mc: 0 for mc in MASTER_CATEGORIES}
-                
-            for q in state.questions:
-                if q.date_awarded and q.question_type in QUESTION_CONFIG:
-                    master = QUESTION_CONFIG[q.question_type]["master"]
-                    all_time_scores[master] += 1
-                    if q.date_awarded == today:
-                        daily_scores[master] += 1
-            
+            for sub_type, count in state.all_time_scores.items():
+                if sub_type in QUESTION_CONFIG:
+                    master = QUESTION_CONFIG[sub_type]["master"]
+                    all_time_master[master] += count
+                    
+            for sub_type, count in state.daily_scores.items():
+                if sub_type in QUESTION_CONFIG:
+                    master = QUESTION_CONFIG[sub_type]["master"]
+                    daily_master[master] += count
+
             name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
@@ -659,106 +655,133 @@
             total_daily = 0
             
             for mc in MASTER_CATEGORIES:
-                all_time = all_time_scores[mc]
-                daily = daily_scores[mc]
-                total_all_time += all_time
-                total_daily += daily
+                total_all_time += all_time_master[mc]
+                total_daily += daily_master[mc]
                 
-                document.getElementById("score-" + mc + "-today").innerText = str(daily)
-                document.getElementById("score-" + mc + "-all").innerText = str(all_time)
+                document.getElementById("score-" + mc + "-today").innerText = str(daily_master[mc])
+                document.getElementById("score-" + mc + "-all").innerText = str(all_time_master[mc])
 
             if len(MASTER_CATEGORIES) > 0:
                 avg_all_time = total_all_time / len(MASTER_CATEGORIES)
                 avg_daily = total_daily / len(MASTER_CATEGORIES)
                 
-                # MicroPython Safe String Formatting
                 document.getElementById("score-avg-today").innerText = "%.2f" % avg_daily
                 document.getElementById("score-avg-all").innerText = "%.2f" % avg_all_time
 
-            levels = get_current_levels(today)
+            levels = get_current_levels()
             
             for mc in MASTER_CATEGORIES:
                 el = document.getElementById("score-" + mc + "-today")
-                if levels[mc] > 0:
-                    el.classList.add("glow-text")
-                else:
-                    el.classList.remove("glow-text")
+                if levels[mc] > 0: el.classList.add("glow-text")
+                else: el.classList.remove("glow-text")
                     
             avg_el = document.getElementById("score-avg-today")
-            if levels["avg"] > 0:
-                avg_el.classList.add("glow-text")
-            else:
-                avg_el.classList.remove("glow-text")
+            if levels["avg"] > 0: avg_el.classList.add("glow-text")
+            else: avg_el.classList.remove("glow-text")
 
-            required_correct = int(len(state.questions) * REQUIRED_CORRECT_RATIO)
-            btn = document.getElementById("btn-load-more")
-            
-            if total_all_time < required_correct:
-                btn.disabled = True
-            else:
-                btn.disabled = False
-
-        def create_question_element(question):
-            # Fallback for unexpected data corruption
-            if question.question_type not in QUESTION_CONFIG:
-                question.question_type = "base_conversion"
+        def create_question_element(question_dto):
+            q_type = question_dto.question_type
+            if q_type not in QUESTION_CONFIG: q_type = "base_conversion"
                 
-            master = QUESTION_CONFIG[question.question_type]["master"]
+            master = QUESTION_CONFIG[q_type]["master"]
             bg_color = MASTER_DETAILS[master]["bg_color"]
 
             row = document.createElement("div")
-            row.className = "flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm"
+            row.className = "question-row relative flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm transition-all duration-300"
 
             bar = document.createElement("div")
             bar.className = "hidden md:block w-2 h-14 rounded-full opacity-80 " + bg_color
 
             prompt_div = document.createElement("div")
             prompt_div.className = "flex-1 text-[17px] font-semibold whitespace-pre-wrap pl-2 leading-relaxed"
-            prompt_div.innerText = question.prompt
+            prompt_div.innerText = question_dto.prompt
+
+            # Dedicated wrapper for the input field
+            input_wrapper = document.createElement("div")
+            input_wrapper.className = "relative w-full md:w-48 shrink-0 flex items-center justify-center"
+
+            # Overlay for correct answer animation (lighter glassy green)
+            tick_overlay = document.createElement("div")
+            tick_overlay.className = "absolute inset-0 bg-transparent flex items-center justify-center z-50 hidden pointer-events-none"
+            tick_overlay.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>'
 
             input_field = document.createElement("input")
             input_field.type = "text"
             input_field.placeholder = "Type answer"
-            input_field.className = "w-full md:w-48 p-2 px-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-base transition-colors"
-            input_field.value = question.user_answer
+            input_field.className = "w-full p-2 px-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-base transition-colors bg-white relative z-20"
 
-            row.append(bar, prompt_div, input_field)
-
-            def apply_style(is_correct):
-                if is_correct:
-                    input_field.classList.add("bg-green-100", "border-green-500", "text-green-900")
-                    input_field.classList.remove("border-gray-300")
-                else:
-                    input_field.classList.remove("bg-green-100", "border-green-500", "text-green-900")
-                    input_field.classList.add("border-gray-300")
-
-            apply_style(validate_answer(question.validator_type, question.expected, question.user_answer))
+            input_wrapper.append(input_field, tick_overlay)
+            row.append(bar, prompt_div, input_wrapper)
 
             def on_input(e):
-                question.user_answer = input_field.value
-                is_correct = validate_answer(question.validator_type, question.expected, question.user_answer)
-                apply_style(is_correct)
+                ans = input_field.value
+                is_correct = validate_answer(question_dto.validator_type, question_dto.expected, ans)
                 
-                if is_correct and not question.date_awarded:
-                    today = window.Date.new().toDateString()
-                    old_levels = get_current_levels(today)
+                if is_correct:
+                    row.classList.add("z-50")
                     
-                    question.date_awarded = today
+                    input_field.disabled = True
+                    input_field.classList.remove("border-gray-300")
+                    input_field.classList.add("border-green-500", "text-green-900")
+                    
+                    today = window.Date.new().toDateString()
+                    if state.last_active_date != today:
+                        state.last_active_date = today
+                        state.daily_scores = {}
+                        
+                    old_levels = get_current_levels()
+                    
+                    state.daily_scores[q_type] = state.daily_scores.get(q_type, 0) + 1
+                    state.all_time_scores[q_type] = state.all_time_scores.get(q_type, 0) + 1
                     save_state()
                     
-                    new_levels = get_current_levels(today)
+                    new_levels = get_current_levels()
                     refresh_dashboard()
                     
-                    master_cat = QUESTION_CONFIG[question.question_type]["master"]
-                    if new_levels[master_cat] > old_levels[master_cat]:
-                        trigger_pop("score-" + master_cat + "-today")
-                    
+                    if new_levels[master] > old_levels[master]:
+                        trigger_pop("score-" + master + "-today")
                     if new_levels["avg"] > old_levels["avg"]:
                         trigger_pop("score-avg-today")
-                else:
-                    save_state()
-                    refresh_dashboard()
                         
+                    tick_overlay.classList.remove("hidden")
+                    tick_overlay.classList.add("tick-anim")
+                    
+                    all_inputs = document.querySelectorAll(".question-row input[type='text']")
+                    is_last = False
+                    if all_inputs.length > 0 and all_inputs[all_inputs.length - 1].isSameNode(input_field):
+                        is_last = True
+
+                    if not is_last:
+                        focus_next_available_input(input_field)
+
+                    def remove_and_replace(*args):
+                        try:
+                            row.parentNode.removeChild(row)
+                            append_questions(1)
+                            
+                            if is_last:
+                                container = document.getElementById("questions-container")
+                                new_row = container.lastElementChild
+                                if new_row:
+                                    refreshed_inputs = document.querySelectorAll(".question-row input[type='text']")
+                                    if refreshed_inputs.length > 0:
+                                        refreshed_inputs[refreshed_inputs.length - 1].focus()
+                                    # Safe clean call without dictionary parameter
+                                    new_row.scrollIntoView()
+                        except Exception:
+                            pass
+
+                    def slide_out_step(*args):
+                        try:
+                            row.classList.add("row-exit")
+                            TIMEOUT_CALLBACKS.append(remove_and_replace)
+                            window.setTimeout(remove_and_replace, 400)
+                        except Exception:
+                            pass
+
+                    TIMEOUT_CALLBACKS.append(slide_out_step)
+                    window.setTimeout(slide_out_step, 1000)
+
             input_field.addEventListener("input", on_input)
             return row
 
@@ -767,25 +790,16 @@
             for _ in range(count):
                 q_type = choose_weighted_question_type()
                 gen_func = QUESTION_CONFIG[q_type]["generator"]
+                question_dto = gen_func()
                 
-                question = gen_func()
-                state.questions.append(question)
-                
-                row_el = create_question_element(question)
+                row_el = create_question_element(question_dto)
                 container.append(row_el)
-                
-            save_state()
-            refresh_dashboard()
 
         # ==========================================
         # EVENT LISTENERS & INITIALIZATION
         # ==========================================
-        def handle_load_more(e):
-            append_questions(QUESTION_BATCH_SIZE)
-
         def handle_toggle_advanced(e):
             state.advanced_mode = e.target.checked
-            # Keep both checkboxes visually synced
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             document.getElementById("toggle-advanced-top").checked = state.advanced_mode
             save_state()
@@ -810,11 +824,10 @@
                 state.lastname = lname
                 document.getElementById("name-modal").classList.add("hidden")
                 
-                if len(state.questions) == 0:
-                    append_questions(QUESTION_BATCH_SIZE)
-                else:
-                    save_state()
-                    refresh_dashboard()
+                document.getElementById("questions-container").innerHTML = ""
+                append_questions(QUESTION_BATCH_SIZE)
+                refresh_dashboard()
+                save_state()
 
         def prompt_reset(e):
             document.getElementById("reset-modal").classList.remove("hidden")
@@ -827,7 +840,8 @@
             state.firstname = ""
             state.lastname = ""
             state.advanced_mode = False
-            state.questions = []
+            state.daily_scores = {}
+            state.all_time_scores = {}
             
             document.getElementById("toggle-advanced-top").checked = False
             document.getElementById("toggle-advanced-modal").checked = False
@@ -842,9 +856,6 @@
 
         # Wire up buttons and toggles
         document.getElementById("btn-start").onclick = start_session
-        document.getElementById("btn-load-more").onclick = handle_load_more
-        document.getElementById("btn-load-more").innerText = "Load " + str(QUESTION_BATCH_SIZE) + " more questions"
-        
         document.getElementById("toggle-advanced-top").addEventListener("change", handle_toggle_advanced)
         document.getElementById("toggle-advanced-modal").addEventListener("change", handle_toggle_advanced)
         
@@ -853,9 +864,8 @@
         document.getElementById("btn-confirm-reset").onclick = confirm_reset
 
         if load_state():
-            container = document.getElementById("questions-container")
-            for q in state.questions:
-                container.append(create_question_element(q))
+            document.getElementById("questions-container").innerHTML = ""
+            append_questions(QUESTION_BATCH_SIZE)
             refresh_dashboard()
         else:
             document.getElementById("name-modal").classList.remove("hidden")
