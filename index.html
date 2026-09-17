@@ -449,14 +449,15 @@
 
         def generate_twos_comp_bin_to_den():
             value = random.randint(-128, -1)
-            # '& 0xFF' correctly produces the 8-bit two's complement binary string in Python
-            bin_str = format(value & 0xFF, '08b')
+            # Use format_binary safely instead of format()
+            bin_str = format_binary(value & 0xFF)
             prompt = "Convert the Two's Complement 8-bit binary number " + bin_str + " to denary."
             return Question("twos_comp_bin_to_den", prompt, "integer", value)
 
         def generate_twos_comp_den_to_bin():
             value = random.randint(-128, -1)
-            bin_str = format(value & 0xFF, '08b')
+            # Use format_binary safely instead of format()
+            bin_str = format_binary(value & 0xFF)
             prompt = "Convert the negative denary number " + str(value) + " to an 8-bit Two's Complement binary number."
             return Question("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
 
