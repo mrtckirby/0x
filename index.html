@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>0x</title>
     
+    <title>0x</title>
+
     <!-- Modern SVG Favicon (Crisp at any screen resolution/zoom) -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-
     <!-- PNG / ICO Fallbacks for older browsers -->
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png">
-
     <!-- Apple Touch Icon (Used when students save the site to an iOS home screen) -->
     <link rel="apple-touch-icon" sizes="180x180" href="./favicon.png">
-
+    
     <!-- Local Self-Hosted Tailwind CSS -->
     <link rel="stylesheet" href="./tailwind.min.css">
     
@@ -67,6 +66,11 @@
                 <p id="error-lastname" class="text-red-500 text-xs mt-1 hidden">Enter a lastname</p>
             </div>
 
+            <label class="flex items-center gap-2 text-sm font-semibold text-gray-800 cursor-pointer mt-1">
+                <input type="checkbox" id="toggle-advanced-modal" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                Include advanced (A-Level) questions
+            </label>
+
             <div class="flex justify-end mt-2">
                 <button id="btn-start" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">Start</button>
             </div>
@@ -87,8 +91,8 @@
 
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
-        <div class="flex flex-wrap justify-center gap-3 md:gap-6 w-full">
-            <!-- Score Blocks -->
+        <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
+            <!-- 4 Master Score Blocks -->
             <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
                 <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
@@ -97,17 +101,10 @@
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>addition</span>
+                <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>arithmetic</span>
                 <div class="text-2xl font-bold text-purple-900 flex items-baseline gap-1">
-                    <span id="score-binary_addition-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-binary_addition-all">0</span>)</span>
-                </div>
-            </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-indigo-900 text-center leading-tight h-8">Binary<br>shift</span>
-                <div class="text-2xl font-bold text-indigo-900 flex items-baseline gap-1">
-                    <span id="score-binary_shift-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-binary_shift-all">0</span>)</span>
+                    <span id="score-binary_arithmetic-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
@@ -133,16 +130,23 @@
             </div>
         </div>
         
-        <div class="flex items-center max-w-4xl mx-auto w-full px-2 gap-2">
-            <div>
-                <span class="text-lg">Student:</span>
-                <span id="label-student" class="text-lg font-bold">—</span>
+        <div class="flex items-center max-w-4xl mx-auto w-full px-2 gap-4">
+            <label class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 cursor-pointer select-none">
+                <input type="checkbox" id="toggle-advanced-top" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                A-Level Mode
+            </label>
+            
+            <div class="ml-auto flex items-center gap-2">
+                <div>
+                    <span class="text-lg">Student:</span>
+                    <span id="label-student" class="text-lg font-bold">—</span>
+                </div>
+                <button id="btn-start-over" title="Delete my data and progress and start again" class="p-1 text-gray-500 hover:text-red-600 rounded transition hidden focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
             </div>
-            <button id="btn-start-over" title="Delete my data and progress and start again" class="p-1 text-gray-500 hover:text-red-600 rounded transition hidden focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
         </div>
     </div>
 
@@ -167,36 +171,33 @@
         # ==========================================
         # CONSTANTS & CONFIGURATION
         # ==========================================
-        QUESTION_TYPES = (
-            "base_conversion",
-            "binary_addition",
-            "binary_shift",
-            "unit_conversion",
-            "number_of_values",
-        )
-        
-        ALLOW_MULTI_COLUMN_CARRIES = False
-
-        QUESTION_TYPE_WEIGHTS = {
-            "base_conversion": 1.0,
-            "binary_addition": 1.0,
-            "binary_shift": 1.0,
-            "unit_conversion": 1.0,
-            "number_of_values": 1.0,
-        }
-        
         QUESTION_BATCH_SIZE = 20
         RELATIVE_TOLERANCE = 0.02
         ABSOLUTE_TOLERANCE = 1e-6
         REQUIRED_CORRECT_RATIO = 0.75
         STATE_KEY = "cs_maths_state"
+        
+        ALLOW_MULTI_COLUMN_CARRIES = False
 
-        QUESTION_TYPE_DETAILS = {
-            "base_conversion":   {"label": "Base conversion",   "bg_color": "bg-blue-900"},
-            "binary_addition":   {"label": "Binary addition",   "bg_color": "bg-purple-900"},
-            "binary_shift":      {"label": "Binary shift",      "bg_color": "bg-indigo-900"},
-            "unit_conversion":   {"label": "Unit conversion",   "bg_color": "bg-teal-900"},
-            "number_of_values":  {"label": "Number of values",  "bg_color": "bg-orange-900"},
+        MASTER_CATEGORIES = (
+            "base_conversion",
+            "binary_arithmetic",
+            "unit_conversion",
+            "number_of_values",
+        )
+
+        MASTER_DETAILS = {
+            "base_conversion":   {"bg_color": "bg-blue-900"},
+            "binary_arithmetic": {"bg_color": "bg-purple-900"},
+            "unit_conversion":   {"bg_color": "bg-teal-900"},
+            "number_of_values":  {"bg_color": "bg-orange-900"},
+        }
+
+        # Data map for handling legacy saves seamlessly
+        LEGACY_TYPE_MAP = {
+            "a": "base_conversion",
+            "c": "unit_conversion",
+            "d": "number_of_values",
         }
 
         UNIT_VALUES = {
@@ -221,19 +222,14 @@
             "gigabyte": "gigabytes",
         }
 
-        LEGACY_TYPE_MAP = {
-            "a": "base_conversion",
-            "c": "unit_conversion",
-            "d": "number_of_values",
-        }
-
         # ==========================================
-        # DATA CLASSES
+        # DATA CLASSES & STATE
         # ==========================================
         class AppState:
             def __init__(self):
                 self.firstname = ""
                 self.lastname = ""
+                self.advanced_mode = False
                 self.questions = []
 
         class Question:
@@ -282,24 +278,6 @@
         # ==========================================
         # HELPERS & FORMATTERS
         # ==========================================
-        def choose_weighted_question_type():
-            total_weight = 0.0
-            for qt in QUESTION_TYPES:
-                total_weight += QUESTION_TYPE_WEIGHTS.get(qt, 1.0)
-                
-            r = random.random() * total_weight
-            cumulative = 0.0
-            for qt in QUESTION_TYPES:
-                cumulative += QUESTION_TYPE_WEIGHTS.get(qt, 1.0)
-                if r <= cumulative:
-                    return qt
-            return QUESTION_TYPES[0]
-
-        def singular_or_plural(count, singular, plural):
-            if count == 1:
-                return singular
-            return plural
-
         def format_binary(value):
             s = bin(value)[2:]
             while len(s) < 8:
@@ -362,17 +340,19 @@
             return level
 
         def get_current_levels(today):
-            daily_scores = {qt: 0 for qt in QUESTION_TYPES}
+            daily_scores = {mc: 0 for mc in MASTER_CATEGORIES}
             
             for q in state.questions:
-                if q.date_awarded == today and q.question_type in daily_scores:
-                    daily_scores[q.question_type] += 1
+                if q.date_awarded == today:
+                    if q.question_type in QUESTION_CONFIG:
+                        master = QUESTION_CONFIG[q.question_type]["master"]
+                        daily_scores[master] += 1
             
             levels = {}
-            for qt in QUESTION_TYPES:
-                levels[qt] = get_streak_level(daily_scores[qt], 3)
+            for mc in MASTER_CATEGORIES:
+                levels[mc] = get_streak_level(daily_scores[mc], 3)
                 
-            daily_avg = sum(daily_scores.values()) / len(QUESTION_TYPES)
+            daily_avg = sum(daily_scores.values()) / len(MASTER_CATEGORIES)
             levels["avg"] = get_streak_level(daily_avg, 3)
             
             return levels
@@ -467,6 +447,19 @@
             prompt = "Convert " + representations[source_base] + " from " + source_base + " to " + target_base + "."
             return Question("base_conversion", prompt, v_type, expected)
 
+        def generate_twos_comp_bin_to_den():
+            value = random.randint(-128, -1)
+            # '& 0xFF' correctly produces the 8-bit two's complement binary string in Python
+            bin_str = format(value & 0xFF, '08b')
+            prompt = "Convert the Two's Complement 8-bit binary number " + bin_str + " to denary."
+            return Question("twos_comp_bin_to_den", prompt, "integer", value)
+
+        def generate_twos_comp_den_to_bin():
+            value = random.randint(-128, -1)
+            bin_str = format(value & 0xFF, '08b')
+            prompt = "Convert the negative denary number " + str(value) + " to an 8-bit Two's Complement binary number."
+            return Question("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
+
         def generate_binary_addition_question():
             term_count = random.choice([2, 3])
             while True:
@@ -484,6 +477,21 @@
 
             prompt = "Add these 8-bit binary numbers:\n  " + "\n+ ".join(binary_values)
             return Question("binary_addition", prompt, "binary_string", format_binary(total))
+
+        def generate_binary_subtraction_question():
+            a = random.randint(0, 255)
+            b = random.randint(0, a) # Ensures positive result
+            prompt = "Subtract these 8-bit binary numbers:\n  " + format_binary(a) + "\n- " + format_binary(b)
+            return Question("binary_subtraction", prompt, "binary_string", format_binary(a - b))
+
+        def generate_binary_multiplication_question():
+            while True:
+                a = random.randint(0, 255)
+                b = random.randint(0, 255)
+                if a * b <= 255:
+                    break
+            prompt = "Multiply these 8-bit binary numbers:\n  " + format_binary(a) + "\n* " + format_binary(b)
+            return Question("binary_multiplication", prompt, "binary_string", format_binary(a * b))
 
         def generate_bit_shift_question():
             direction = random.choice(["left", "right"])
@@ -517,44 +525,69 @@
             prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
             return Question("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
 
-        def generate_bit_capacity_question():
-            bits = random.randint(1, 8)
-            bit_label = singular_or_plural(bits, "bit", "bits")
-            prompt = "How many different values can be represented using " + str(bits) + " " + bit_label + "?"
-            return Question("number_of_values", prompt, "integer", 2**bits)
-
-        def generate_denary_digit_capacity_question():
-            digits = random.randint(1, 6)
-            digit_label = singular_or_plural(digits, "digit", "digits")
-            prompt = "How many different values can be represented using " + str(digits) + " denary " + digit_label + "?"
-            return Question("number_of_values", prompt, "integer", 10**digits)
-
-        def generate_bit_highest_value_question():
-            bits = random.randint(1, 8)
-            bit_label = singular_or_plural(bits, "bit", "bits")
-            prompt = "What is the highest value that can be represented with " + str(bits) + " " + bit_label + "?"
-            return Question("number_of_values", prompt, "integer", 2**bits - 1)
-
-        def generate_denary_highest_value_question():
-            digits = random.randint(1, 6)
-            digit_label = singular_or_plural(digits, "digit", "digits")
-            prompt = "What is the highest value that can be represented with " + str(digits) + " denary " + digit_label + "?"
-            return Question("number_of_values", prompt, "integer", 10**digits - 1)
-
         def generate_capacity_question():
-            if random.random() < 0.5:
-                gen = random.choice([generate_bit_capacity_question, generate_denary_digit_capacity_question])
+            is_bits = random.random() < 0.5
+            is_highest = random.random() < 0.5
+            
+            if is_bits:
+                bits = random.randint(1, 8)
+                label = "bits" if bits > 1 else "bit"
+                if is_highest:
+                    prompt = "What is the highest value that can be represented with " + str(bits) + " " + label + "?"
+                    return Question("number_of_values", prompt, "integer", 2**bits - 1)
+                else:
+                    prompt = "How many different values can be represented using " + str(bits) + " " + label + "?"
+                    return Question("number_of_values", prompt, "integer", 2**bits)
             else:
-                gen = random.choice([generate_bit_highest_value_question, generate_denary_highest_value_question])
-            return gen()
+                digits = random.randint(1, 6)
+                label = "digits" if digits > 1 else "digit"
+                if is_highest:
+                    prompt = "What is the highest value that can be represented with " + str(digits) + " denary " + label + "?"
+                    return Question("number_of_values", prompt, "integer", 10**digits - 1)
+                else:
+                    prompt = "How many different values can be represented using " + str(digits) + " denary " + label + "?"
+                    return Question("number_of_values", prompt, "integer", 10**digits)
 
-        QUESTION_GENERATORS = {
-            "base_conversion": generate_base_conversion_question,
-            "binary_addition": generate_binary_addition_question,
-            "binary_shift":    generate_bit_shift_question,
-            "unit_conversion": generate_unit_conversion_question,
-            "number_of_values": generate_capacity_question,
+        # ==========================================
+        # QUESTION ROUTING & WEIGHTS
+        # ==========================================
+        QUESTION_CONFIG = {
+            # Base Conversion Group
+            "base_conversion":       {"master": "base_conversion",   "advanced": False, "weight": 1.0, "generator": generate_base_conversion_question},
+            "twos_comp_bin_to_den":  {"master": "base_conversion",   "advanced": True,  "weight": 1.0, "generator": generate_twos_comp_bin_to_den},
+            "twos_comp_den_to_bin":  {"master": "base_conversion",   "advanced": True,  "weight": 1.0, "generator": generate_twos_comp_den_to_bin},
+
+            # Binary Arithmetic Group
+            "binary_addition":       {"master": "binary_arithmetic", "advanced": False, "weight": 1.0, "generator": generate_binary_addition_question},
+            "binary_shift":          {"master": "binary_arithmetic", "advanced": False, "weight": 1.0, "generator": generate_bit_shift_question},
+            "binary_subtraction":    {"master": "binary_arithmetic", "advanced": True,  "weight": 1.0, "generator": generate_binary_subtraction_question},
+            "binary_multiplication": {"master": "binary_arithmetic", "advanced": True,  "weight": 1.0, "generator": generate_binary_multiplication_question},
+
+            # Unit Conversion & Capacity Groups
+            "unit_conversion":       {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_unit_conversion_question},
+            "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
         }
+
+        def choose_weighted_question_type():
+            choices = []
+            weights = []
+            
+            for q_type, config in QUESTION_CONFIG.items():
+                if config["advanced"] and not state.advanced_mode:
+                    continue
+                choices.append(q_type)
+                weights.append(config["weight"])
+
+            total_weight = sum(weights)
+            r = random.random() * total_weight
+            
+            cumulative = 0.0
+            for i in range(len(choices)):
+                cumulative += weights[i]
+                if r <= cumulative:
+                    return choices[i]
+                    
+            return choices[0]
 
         # ==========================================
         # STATE MANAGEMENT (LocalStorage)
@@ -570,6 +603,7 @@
             data = {
                 "firstname": state.firstname,
                 "lastname": state.lastname,
+                "advanced_mode": state.advanced_mode,
                 "questions": q_dicts
             }
             window.localStorage.setItem(STATE_KEY, json.dumps(data))
@@ -583,6 +617,11 @@
                 data = json.loads(raw)
                 state.firstname = data.get("firstname", "")
                 state.lastname = data.get("lastname", "")
+                state.advanced_mode = data.get("advanced_mode", False)
+                
+                # Sync UI toggles
+                document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+                document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
                 
                 state.questions = []
                 for q_data in data.get("questions", []):
@@ -599,14 +638,15 @@
         def refresh_dashboard():
             today = window.Date.new().toDateString()
             
-            all_time_scores = {qt: 0 for qt in QUESTION_TYPES}
-            daily_scores = {qt: 0 for qt in QUESTION_TYPES}
+            all_time_scores = {mc: 0 for mc in MASTER_CATEGORIES}
+            daily_scores = {mc: 0 for mc in MASTER_CATEGORIES}
                 
             for q in state.questions:
-                if q.date_awarded and q.question_type in all_time_scores:
-                    all_time_scores[q.question_type] += 1
+                if q.date_awarded and q.question_type in QUESTION_CONFIG:
+                    master = QUESTION_CONFIG[q.question_type]["master"]
+                    all_time_scores[master] += 1
                     if q.date_awarded == today:
-                        daily_scores[q.question_type] += 1
+                        daily_scores[master] += 1
             
             name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
@@ -619,26 +659,26 @@
             total_all_time = 0
             total_daily = 0
             
-            for qt in QUESTION_TYPES:
-                all_time = all_time_scores[qt]
-                daily = daily_scores[qt]
+            for mc in MASTER_CATEGORIES:
+                all_time = all_time_scores[mc]
+                daily = daily_scores[mc]
                 total_all_time += all_time
                 total_daily += daily
                 
-                document.getElementById("score-" + qt + "-today").innerText = str(daily)
-                document.getElementById("score-" + qt + "-all").innerText = str(all_time)
+                document.getElementById("score-" + mc + "-today").innerText = str(daily)
+                document.getElementById("score-" + mc + "-all").innerText = str(all_time)
 
-            if len(QUESTION_TYPES) > 0:
-                avg_all_time = total_all_time / len(QUESTION_TYPES)
-                avg_daily = total_daily / len(QUESTION_TYPES)
+            if len(MASTER_CATEGORIES) > 0:
+                avg_all_time = total_all_time / len(MASTER_CATEGORIES)
+                avg_daily = total_daily / len(MASTER_CATEGORIES)
                 document.getElementById("score-avg-today").innerText = "{:.2f}".format(avg_daily)
                 document.getElementById("score-avg-all").innerText = "{:.2f}".format(avg_all_time)
 
             levels = get_current_levels(today)
             
-            for qt in QUESTION_TYPES:
-                el = document.getElementById("score-" + qt + "-today")
-                if levels[qt] > 0:
+            for mc in MASTER_CATEGORIES:
+                el = document.getElementById("score-" + mc + "-today")
+                if levels[mc] > 0:
                     el.classList.add("glow-text")
                 else:
                     el.classList.remove("glow-text")
@@ -658,8 +698,12 @@
                 btn.disabled = False
 
         def create_question_element(question):
-            details = QUESTION_TYPE_DETAILS.get(question.question_type, QUESTION_TYPE_DETAILS["base_conversion"])
-            bg_color = details["bg_color"]
+            # Fallback for unexpected data corruption
+            if question.question_type not in QUESTION_CONFIG:
+                question.question_type = "base_conversion"
+                
+            master = QUESTION_CONFIG[question.question_type]["master"]
+            bg_color = MASTER_DETAILS[master]["bg_color"]
 
             row = document.createElement("div")
             row.className = "flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm"
@@ -704,9 +748,9 @@
                     new_levels = get_current_levels(today)
                     refresh_dashboard()
                     
-                    for qt in QUESTION_TYPES:
-                        if new_levels[qt] > old_levels[qt]:
-                            trigger_pop("score-" + qt + "-today")
+                    master_cat = QUESTION_CONFIG[question.question_type]["master"]
+                    if new_levels[master_cat] > old_levels[master_cat]:
+                        trigger_pop("score-" + master_cat + "-today")
                     
                     if new_levels["avg"] > old_levels["avg"]:
                         trigger_pop("score-avg-today")
@@ -721,7 +765,9 @@
             container = document.getElementById("questions-container")
             for _ in range(count):
                 q_type = choose_weighted_question_type()
-                question = QUESTION_GENERATORS[q_type]()
+                gen_func = QUESTION_CONFIG[q_type]["generator"]
+                
+                question = gen_func()
                 state.questions.append(question)
                 
                 row_el = create_question_element(question)
@@ -735,6 +781,13 @@
         # ==========================================
         def handle_load_more(e):
             append_questions(QUESTION_BATCH_SIZE)
+
+        def handle_toggle_advanced(e):
+            state.advanced_mode = e.target.checked
+            # Keep both checkboxes visually synced
+            document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
+            document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+            save_state()
 
         def start_session(e):
             fname_input = document.getElementById("input-firstname")
@@ -772,7 +825,11 @@
             window.localStorage.removeItem(STATE_KEY)
             state.firstname = ""
             state.lastname = ""
+            state.advanced_mode = False
             state.questions = []
+            
+            document.getElementById("toggle-advanced-top").checked = False
+            document.getElementById("toggle-advanced-modal").checked = False
             
             document.getElementById("questions-container").innerHTML = ""
             document.getElementById("input-firstname").value = ""
@@ -782,9 +839,13 @@
             document.getElementById("name-modal").classList.remove("hidden")
             refresh_dashboard()
 
+        # Wire up buttons and toggles
         document.getElementById("btn-start").onclick = start_session
         document.getElementById("btn-load-more").onclick = handle_load_more
         document.getElementById("btn-load-more").innerText = "Load " + str(QUESTION_BATCH_SIZE) + " more questions"
+        
+        document.getElementById("toggle-advanced-top").addEventListener("change", handle_toggle_advanced)
+        document.getElementById("toggle-advanced-modal").addEventListener("change", handle_toggle_advanced)
         
         document.getElementById("btn-start-over").onclick = prompt_reset
         document.getElementById("btn-cancel-reset").onclick = cancel_reset
