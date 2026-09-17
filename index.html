@@ -449,14 +449,12 @@
 
         def generate_twos_comp_bin_to_den():
             value = random.randint(-128, -1)
-            # Use format_binary safely instead of format()
             bin_str = format_binary(value & 0xFF)
             prompt = "Convert the Two's Complement 8-bit binary number " + bin_str + " to denary."
             return Question("twos_comp_bin_to_den", prompt, "integer", value)
 
         def generate_twos_comp_den_to_bin():
             value = random.randint(-128, -1)
-            # Use format_binary safely instead of format()
             bin_str = format_binary(value & 0xFF)
             prompt = "Convert the negative denary number " + str(value) + " to an 8-bit Two's Complement binary number."
             return Question("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
@@ -672,8 +670,10 @@
             if len(MASTER_CATEGORIES) > 0:
                 avg_all_time = total_all_time / len(MASTER_CATEGORIES)
                 avg_daily = total_daily / len(MASTER_CATEGORIES)
-                document.getElementById("score-avg-today").innerText = "{:.2f}".format(avg_daily)
-                document.getElementById("score-avg-all").innerText = "{:.2f}".format(avg_all_time)
+                
+                # MicroPython Safe String Formatting
+                document.getElementById("score-avg-today").innerText = "%.2f" % avg_daily
+                document.getElementById("score-avg-all").innerText = "%.2f" % avg_all_time
 
             levels = get_current_levels(today)
             
