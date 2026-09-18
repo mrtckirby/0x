@@ -392,12 +392,11 @@
             elif v_type == "boolean":
                 ans_lower = answer.lower()
                 if expected == True:
-                    return ans_lower in ["true", "t"]
+                    return ans_lower == "true"
                 else:
-                    return ans_lower in ["false", "f"]
+                    return ans_lower == "false"
                     
             elif v_type == "real_binary":
-                # Strip spaces so "1011 0110" matches "10110110"
                 cleaned_ans = answer.replace(" ", "")
                 return cleaned_ans == expected
                 
@@ -465,23 +464,19 @@
             return QuestionDTO("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
 
         def generate_real_denary_to_bin():
-            # A-level Floating Point: Random bit allocations
             m_bits = random.choice([8, 9])
             e_bits = random.choice([3, 4])
             
-            # Generate a valid normalised mantissa (Positive starts with '01', Negative with '10')
             is_negative = random.choice([True, False])
             if is_negative:
                 prefix = "10"
             else:
                 prefix = "01"
                 
-            # Remaining mantissa bits (keep some trailing zeros for clean fractions)
             body_len = m_bits - 2
             body = "".join(random.choice(["0", "1"]) for _ in range(body_len - 1)) + "0"
             mantissa = prefix + body
             
-            # Generate exponent (Two's complement)
             e_val = random.randint(- (2**(e_bits-1)), 2**(e_bits-1) - 1)
             if e_val < 0:
                 exp_bin = bin(e_val & ((1 << e_bits) - 1))[2:]
@@ -490,14 +485,6 @@
                 exp_bin = bin(e_val)[2:]
                 while len(exp_bin) < e_bits: exp_bin = "0" + exp_bin
                 
-            # Calculate denary value
-            # Mantissa interpretation in 2's complement with binary point right after first bit
-            # sign bit is mantissa[0]
-            sign = -1 if mantissa[0] == '1' else 1
-            # value of mantissa as a fraction: decode 2's complement fixed point
-            # first bit has weight -1 (if sign 1), or bits can be evaluated directly:
-            # integer weight of bit 0 is -2^0 = -1 (if MSB is 1), positive powers for following? 
-            # Standard A-level spec: MSB is sign (-1), next bit is 2^-1 (0.5), next is 2^-2 (0.25), etc.
             mant_val = 0.0
             if mantissa[0] == '1':
                 mant_val -= 1.0
