@@ -500,6 +500,59 @@
             prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
             return QuestionDTO("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
 
+        def generate_data_transfer_question():
+            target = random.choice(["time", "size", "speed"])
+            
+            size_units = {"MB": {"b10": 10**6 * 8, "b2": 1024**2 * 8}, 
+                          "GB": {"b10": 10**9 * 8, "b2": 1024**3 * 8}}
+            speed_units = {"Mb/s": 10**6, "Gb/s": 10**9}
+            
+            if target == "time":
+                s_unit = random.choice(list(size_units.keys()))
+                sp_unit = random.choice(list(speed_units.keys()))
+                s_val = random.randint(1, 100)
+                sp_val = random.choice([10, 50, 100, 200, 500, 1000])
+                
+                bits_10 = s_val * size_units[s_unit]["b10"]
+                bits_2 = s_val * size_units[s_unit]["b2"]
+                speed_bps = sp_val * speed_units[sp_unit]
+                
+                ans_10 = bits_10 / speed_bps
+                ans_2 = bits_2 / speed_bps
+                
+                prompt = "How long would it take to transfer a " + str(s_val) + s_unit + " file at " + str(sp_val) + sp_unit + "? Give your answer in seconds. (You may use either base-2 or base-10 conventions.)"
+                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                
+            elif target == "size":
+                sp_unit = random.choice(list(speed_units.keys()))
+                t_val = random.choice([10, 30, 60, 120, 300, 600])
+                sp_val = random.choice([10, 50, 100, 500, 1000])
+                target_s_unit = random.choice(list(size_units.keys()))
+                
+                speed_bps = sp_val * speed_units[sp_unit]
+                total_bits = speed_bps * t_val
+                
+                ans_10 = total_bits / size_units[target_s_unit]["b10"]
+                ans_2 = total_bits / size_units[target_s_unit]["b2"]
+                
+                prompt = "A file takes " + str(t_val) + " seconds to transfer at " + str(sp_val) + sp_unit + ". What is the file size in " + target_s_unit + "? (You may use either base-2 or base-10 conventions.)"
+                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                
+            else: # speed
+                s_unit = random.choice(list(size_units.keys()))
+                t_val = random.choice([10, 30, 60, 120, 300])
+                s_val = random.randint(1, 50)
+                target_sp_unit = random.choice(list(speed_units.keys()))
+                
+                bits_10 = s_val * size_units[s_unit]["b10"]
+                bits_2 = s_val * size_units[s_unit]["b2"]
+                
+                ans_10 = (bits_10 / t_val) / speed_units[target_sp_unit]
+                ans_2 = (bits_2 / t_val) / speed_units[target_sp_unit]
+                
+                prompt = "A " + str(s_val) + s_unit + " file transfers in " + str(t_val) + " seconds. What is the average transmission speed in " + target_sp_unit + "? (You may use either base-2 or base-10 conventions for the file size.)"
+                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+
         def generate_capacity_question():
             is_bits = random.random() < 0.5
             is_highest = random.random() < 0.5
@@ -537,6 +590,8 @@
             "binary_multiplication": {"master": "binary_arithmetic", "advanced": True,  "weight": 1.0, "generator": generate_binary_multiplication_question},
 
             "unit_conversion":       {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_unit_conversion_question},
+            "data_transfer":         {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_data_transfer_question},
+            
             "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
         }
 
