@@ -194,7 +194,6 @@
 
     <script type="mpy">
         import random
-        import re
         import json
         from pyscript import document, window
 
@@ -307,13 +306,62 @@
                 return None
 
         def parse_numeric_token(value):
-            match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", value.strip())
-            if not match:
+            text = value.strip()
+            if not text:
                 return None
-            try:
-                return float(match.group(0))
-            except ValueError:
-                return None
+
+            def parse_numeric_prefix(s):
+                n = len(s)
+                i = 0
+
+                if i < n and (s[i] == "+" or s[i] == "-"):
+                    i += 1
+
+                digits_before = 0
+                while i < n and s[i].isdigit():
+                    i += 1
+                    digits_before += 1
+
+                digits_after = 0
+                if i < n and s[i] == ".":
+                    i += 1
+                    while i < n and s[i].isdigit():
+                        i += 1
+                        digits_after += 1
+
+                if digits_before + digits_after == 0:
+                    return 0
+
+                if i < n and (s[i] == "e" or s[i] == "E"):
+                    exp_i = i + 1
+                    if exp_i < n and (s[exp_i] == "+" or s[exp_i] == "-"):
+                        exp_i += 1
+
+                    exp_digits_start = exp_i
+                    while exp_i < n and s[exp_i].isdigit():
+                        exp_i += 1
+
+                    if exp_i > exp_digits_start:
+                        i = exp_i
+
+                return i
+
+            for start in range(len(text)):
+                c = text[start]
+                if not (c.isdigit() or c == "+" or c == "-" or c == "."):
+                    continue
+
+                token_length = parse_numeric_prefix(text[start:])
+                if token_length == 0:
+                    continue
+
+                token = text[start:start + token_length]
+                try:
+                    return float(token)
+                except ValueError:
+                    continue
+
+            return None
 
         def choose_storage_unit(bits_total):
             preferred_units = ["byte", "kilobyte", "megabyte", "gigabyte", "bit"]
