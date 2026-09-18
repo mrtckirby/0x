@@ -389,6 +389,13 @@
             elif v_type == "hex_string":
                 return normalise_hexadecimal(answer) == expected
                 
+            elif v_type == "boolean":
+                ans_lower = answer.lower()
+                if expected == True:
+                    return ans_lower in ["true", "t"]
+                else:
+                    return ans_lower in ["false", "f"]
+                
             elif v_type == "number_list":
                 parsed = parse_float(answer)
                 all_int = True
@@ -598,6 +605,26 @@
                 
             prompt = "Calculate " + str(a) + " " + op + " " + str(b) + "."
             return QuestionDTO("operators_div_mod", prompt, "integer", expected)
+            
+        def generate_boolean_question():
+            op = random.choice(["<", ">", "==", "≤", "≥"])
+            
+            # 30% chance to force numbers to be equal to properly test boundaries
+            if random.random() < 0.3:
+                a = random.randint(1, 30)
+                b = a
+            else:
+                a = random.randint(1, 30)
+                b = random.randint(1, 30)
+                
+            if op == "<": expected = (a < b)
+            elif op == ">": expected = (a > b)
+            elif op == "==": expected = (a == b)
+            elif op == "≤": expected = (a <= b)
+            elif op == "≥": expected = (a >= b)
+            
+            prompt = "Evaluate the boolean expression: " + str(a) + " " + op + " " + str(b) + "\n(Type True or False)"
+            return QuestionDTO("operators_boolean", prompt, "boolean", expected)
 
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
@@ -618,6 +645,7 @@
             "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
 
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
+            "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
         }
 
         def choose_weighted_question_type():
