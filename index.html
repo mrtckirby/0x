@@ -113,7 +113,7 @@
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
-            <!-- 4 Master Score Blocks -->
+            <!-- 5 Master Score Blocks + Average -->
             <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
                 <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
@@ -140,6 +140,13 @@
                 <div class="text-2xl font-bold text-orange-900 flex items-baseline gap-1">
                     <span id="score-number_of_values-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-indigo-900 text-center leading-tight h-8"><br>Operators</span>
+                <div class="text-2xl font-bold text-indigo-900 flex items-baseline gap-1">
+                    <span id="score-operators-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
@@ -199,6 +206,7 @@
             "binary_arithmetic",
             "unit_conversion",
             "number_of_values",
+            "operators",
         )
 
         MASTER_DETAILS = {
@@ -206,6 +214,7 @@
             "binary_arithmetic": {"bg_color": "bg-purple-900"},
             "unit_conversion":   {"bg_color": "bg-teal-900"},
             "number_of_values":  {"bg_color": "bg-orange-900"},
+            "operators":         {"bg_color": "bg-indigo-900"},
         }
 
         LEGACY_TYPE_MAP = {
@@ -576,6 +585,20 @@
                     prompt = "How many different values can be represented using " + str(digits) + " denary " + label + "?"
                     return QuestionDTO("number_of_values", prompt, "integer", 10**digits)
 
+        def generate_div_mod_question():
+            op = random.choice(["DIV", "MOD"])
+            b = random.randint(2, 15)
+            # Ensure 'a' is large enough to make the division non-trivial
+            a = random.randint(b, b * 12) 
+            
+            if op == "DIV":
+                expected = a // b
+            else:
+                expected = a % b
+                
+            prompt = "Calculate " + str(a) + " " + op + " " + str(b) + "."
+            return QuestionDTO("operators_div_mod", prompt, "integer", expected)
+
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
         # ==========================================
@@ -593,6 +616,8 @@
             "data_transfer":         {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_data_transfer_question},
             
             "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
+
+            "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
         }
 
         def choose_weighted_question_type():
