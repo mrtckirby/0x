@@ -113,7 +113,7 @@
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
-            <!-- 5 Master Score Blocks + Average -->
+            <!-- 6 Master Score Blocks + Average -->
             <div class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
                 <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
@@ -147,6 +147,13 @@
                 <div class="text-2xl font-bold text-indigo-900 flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-rose-900 text-center leading-tight h-8">Data<br>representation</span>
+                <div class="text-2xl font-bold text-rose-900 flex items-baseline gap-1">
+                    <span id="score-data_representation-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-data_representation-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
@@ -187,6 +194,7 @@
 
     <script type="mpy">
         import random
+        import re
         import json
         from pyscript import document, window
 
@@ -207,6 +215,7 @@
             "unit_conversion",
             "number_of_values",
             "operators",
+            "data_representation",
         )
 
         MASTER_DETAILS = {
@@ -215,6 +224,7 @@
             "unit_conversion":   {"bg_color": "bg-teal-900"},
             "number_of_values":  {"bg_color": "bg-orange-900"},
             "operators":         {"bg_color": "bg-indigo-900"},
+            "data_representation":{"bg_color": "bg-rose-900"},
         }
 
         LEGACY_TYPE_MAP = {
@@ -269,11 +279,14 @@
         # ==========================================
         # HELPERS & FORMATTERS
         # ==========================================
-        def format_binary(value):
+        def format_binary_width(value, width):
             s = bin(value)[2:]
-            while len(s) < 8:
+            while len(s) < width:
                 s = "0" + s
             return s
+
+        def format_binary(value):
+            return format_binary_width(value, 8)
 
         def format_hexadecimal(value):
             s = hex(value)[2:].upper()
@@ -292,6 +305,40 @@
                 return float(value.strip())
             except ValueError:
                 return None
+
+        def parse_numeric_token(value):
+            match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", value.strip())
+            if not match:
+                return None
+            try:
+                return float(match.group(0))
+            except ValueError:
+                return None
+
+        def choose_storage_unit(bits_total):
+            preferred_units = ["byte", "kilobyte", "megabyte", "gigabyte", "bit"]
+            best_unit = preferred_units[0]
+            best_penalty = None
+
+            for unit in preferred_units:
+                decimal_value = bits_total / UNIT_VALUES[unit]
+                binary_value = bits_total / UNIT_VALUES_BINARY[unit]
+
+                if (1 <= decimal_value < 1000) or (1 <= binary_value < 1000):
+                    return unit
+
+                penalty = 0
+                for v in [decimal_value, binary_value]:
+                    if v < 1:
+                        penalty += (1 - v)
+                    elif v >= 1000:
+                        penalty += (v - 1000) / 1000
+
+                if best_penalty is None or penalty < best_penalty:
+                    best_penalty = penalty
+                    best_unit = unit
+
+            return best_unit
 
         def is_close_to_any(value, expected_values):
             for expected in expected_values:
@@ -385,6 +432,12 @@
                 for c in answer:
                     if c != "0" and c != "1": return False
                 return answer == expected
+
+            elif v_type == "binary_string_7":
+                if len(answer) != 7: return False
+                for c in answer:
+                    if c != "0" and c != "1": return False
+                return answer == expected
                 
             elif v_type == "hex_string":
                 return normalise_hexadecimal(answer) == expected
@@ -419,6 +472,28 @@
                 
                 if parsed is None: return False
                 return is_close_to_any(parsed, expected)
+
+            elif v_type == "number_list_with_unit":
+                parsed = parse_numeric_token(answer)
+                if parsed is None: return False
+
+                all_int = True
+                for v in expected:
+                    if float(v) != int(float(v)):
+                        all_int = False
+                        break
+
+                if all_int:
+                    int_parsed = int(parsed)
+                    if abs(parsed - int_parsed) <= ABSOLUTE_TOLERANCE:
+                        int_expected = [int(v) for v in expected]
+                        if int_parsed in int_expected:
+                            return True
+
+                return is_close_to_any(parsed, expected)
+
+            elif v_type == "letter":
+                return answer == expected
                 
             return False
 
@@ -639,6 +714,91 @@
                 prompt = "A " + str(s_val) + s_unit + " file transfers in " + str(t_val) + " seconds. What is the average transmission speed in " + target_sp_unit + "? (You may use either base-2 or base-10 conventions for the file size.)"
                 return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
 
+        def generate_representing_images_question():
+            width, height = random.choice([
+                (320, 240), (640, 480), (800, 600), (1024, 768),
+                (1280, 720), (1366, 768), (1600, 900), (1920, 1080),
+                (2560, 1440), (3840, 2160)
+            ])
+            bit_depth = random.choice([1, 2, 4, 8, 16, 24, 32])
+            total_bits = width * height * bit_depth
+
+            target_unit = choose_storage_unit(total_bits)
+            ans_10 = total_bits / UNIT_VALUES[target_unit]
+            ans_2 = total_bits / UNIT_VALUES_BINARY[target_unit]
+
+            prompt = (
+                "An image is " + str(width) + " pixels wide and " + str(height) + " pixels high, "
+                "with a bit depth of " + str(bit_depth) + " bits per pixel. "
+                "What is the minimum uncompressed storage space required? "
+                "Give your answer in " + UNIT_LABELS[target_unit] + ". "
+                "(You may use either base-10 or base-2 conventions.)"
+            )
+            return QuestionDTO("representing_images", prompt, "number_list_with_unit", [ans_10, ans_2])
+
+        def generate_representing_sound_question():
+            duration_seconds = random.randint(2, 600)
+            sample_rate = random.choice([8000, 11025, 22050, 44100, 48000, 96000])
+            sample_resolution = random.choice([8, 16, 24])
+            channel_count, channel_label = random.choice([(1, "mono"), (2, "stereo")])
+
+            total_bits = duration_seconds * sample_rate * sample_resolution * channel_count
+            target_unit = choose_storage_unit(total_bits)
+            ans_10 = total_bits / UNIT_VALUES[target_unit]
+            ans_2 = total_bits / UNIT_VALUES_BINARY[target_unit]
+
+            prompt = (
+                "A " + channel_label + " sound clip lasts " + str(duration_seconds) + " seconds, "
+                "sampled at " + str(sample_rate) + " Hz with a sample resolution of "
+                + str(sample_resolution) + " bits per sample. "
+                "What is the minimum uncompressed storage space required? "
+                "Give your answer in " + UNIT_LABELS[target_unit] + ". "
+                "(You may use either base-10 or base-2 conventions.)"
+            )
+            return QuestionDTO("representing_sound", prompt, "number_list_with_unit", [ans_10, ans_2])
+
+        def generate_representing_text_question():
+            is_upper = random.choice([True, False])
+            base_char = ord("A") if is_upper else ord("a")
+            case_label = "uppercase" if is_upper else "lowercase"
+
+            source_index = random.randint(0, 25)
+            valid_offsets = [o for o in range(-8, 9) if o != 0 and 0 <= (source_index + o) <= 25]
+            offset = random.choice(valid_offsets)
+            target_index = source_index + offset
+
+            source_letter = chr(base_char + source_index)
+            target_letter = chr(base_char + target_index)
+
+            if random.choice([True, False]):
+                use_binary = random.choice([True, False])
+
+                if use_binary:
+                    source_code = format_binary_width(ord(source_letter), 7)
+                    target_code = format_binary_width(ord(target_letter), 7)
+                    prompt = (
+                        "In 7-bit ASCII, the code for the " + case_label + " letter '" + source_letter
+                        + "' is " + source_code + ". What is the 7-bit ASCII code for '" + target_letter + "'?"
+                    )
+                    return QuestionDTO("representing_text", prompt, "binary_string_7", target_code)
+
+                source_code = ord(source_letter)
+                target_code = ord(target_letter)
+                prompt = (
+                    "In ASCII, the denary code for the " + case_label + " letter '" + source_letter
+                    + "' is " + str(source_code) + ". What is the denary code for '" + target_letter + "'?"
+                )
+                return QuestionDTO("representing_text", prompt, "integer", target_code)
+
+            source_code = ord(source_letter)
+            target_code = ord(target_letter)
+            prompt = (
+                "The denary ASCII code for the " + case_label + " letter '" + source_letter + "' is "
+                + str(source_code) + ". The denary ASCII code " + str(target_code)
+                + " corresponds to which " + case_label + " letter?"
+            )
+            return QuestionDTO("representing_text", prompt, "letter", target_letter)
+
         def generate_capacity_question():
             is_bits = random.random() < 0.5
             is_highest = random.random() < 0.5
@@ -716,6 +876,10 @@
 
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
+
+            "representing_images":   {"master": "data_representation", "advanced": False, "weight": 1.0, "generator": generate_representing_images_question},
+            "representing_sound":    {"master": "data_representation", "advanced": False, "weight": 1.0, "generator": generate_representing_sound_question},
+            "representing_text":     {"master": "data_representation", "advanced": False, "weight": 1.0, "generator": generate_representing_text_question},
         }
 
         def choose_weighted_question_type():
