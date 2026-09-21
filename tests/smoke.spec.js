@@ -7,6 +7,15 @@ const MASTER_CATEGORY_IDS = [
   "number_of_values",
   "operators",
 ];
+const UNIT_VALUES10 = {
+  bit: 1,
+  byte: 8,
+  kilobyte: 8000,
+  megabyte: 8000000,
+  gigabyte: 8000000000,
+};
+const SIZE_UNITS10 = { MB: 10 ** 6 * 8, GB: 10 ** 9 * 8 };
+const SPEED_UNITS = { "Mb/s": 10 ** 6, "Gb/s": 10 ** 9 };
 
 function formatBinary(value) {
   return value.toString(2).padStart(8, "0");
@@ -21,16 +30,6 @@ function formatAnswer(value) {
 }
 
 function solvePrompt(prompt) {
-  const unitValues10 = {
-    bit: 1,
-    byte: 8,
-    kilobyte: 8000,
-    megabyte: 8000000,
-    gigabyte: 8000000000,
-  };
-  const sizeUnits10 = { MB: 10 ** 6 * 8, GB: 10 ** 9 * 8 };
-  const speedUnits = { "Mb/s": 10 ** 6, "Gb/s": 10 ** 9 };
-
   const trimmed = prompt.replace(/\r/g, "").trim();
   let match;
 
@@ -45,7 +44,7 @@ function solvePrompt(prompt) {
   }
 
   if (trimmed.startsWith("Add these 8-bit binary numbers:")) {
-    const sum = [...trimmed.matchAll(/[01]{8}/g)].reduce((total, [, digits]) => total + parseInt(digits, 2), 0);
+    const sum = [...trimmed.matchAll(/[01]{8}/g)].reduce((total, matchText) => total + parseInt(matchText[0], 2), 0);
     return formatBinary(sum);
   }
 
@@ -62,28 +61,28 @@ function solvePrompt(prompt) {
   if (match) {
     const [, amountText, sourceUnit, targetUnit] = match;
     const amount = Number(amountText);
-    return formatAnswer((amount * unitValues10[sourceUnit.slice(0, -1)]) / unitValues10[targetUnit.slice(0, -1)]);
+    return formatAnswer((amount * UNIT_VALUES10[sourceUnit.slice(0, -1)]) / UNIT_VALUES10[targetUnit.slice(0, -1)]);
   }
 
   match = trimmed.match(/^How long would it take to transfer a (\d+)(MB|GB) file at (\d+)(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/);
   if (match) {
     const [, sizeText, sizeUnit, speedText, speedUnit] = match;
-    const bits = Number(sizeText) * sizeUnits10[sizeUnit];
-    return formatAnswer(bits / (Number(speedText) * speedUnits[speedUnit]));
+    const bits = Number(sizeText) * SIZE_UNITS10[sizeUnit];
+    return formatAnswer(bits / (Number(speedText) * SPEED_UNITS[speedUnit]));
   }
 
   match = trimmed.match(/^A file takes (\d+) seconds to transfer at (\d+)(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/);
   if (match) {
     const [, timeText, speedText, speedUnit, targetUnit] = match;
-    const bits = Number(timeText) * Number(speedText) * speedUnits[speedUnit];
-    return formatAnswer(bits / sizeUnits10[targetUnit]);
+    const bits = Number(timeText) * Number(speedText) * SPEED_UNITS[speedUnit];
+    return formatAnswer(bits / SIZE_UNITS10[targetUnit]);
   }
 
   match = trimmed.match(/^A (\d+)(MB|GB) file transfers in (\d+) seconds\. What is the average transmission speed in (Mb\/s|Gb\/s)\? \(You may use either base-2 or base-10 conventions for the file size\.\)$/);
   if (match) {
     const [, sizeText, sizeUnit, timeText, targetUnit] = match;
-    const bits = Number(sizeText) * sizeUnits10[sizeUnit];
-    return formatAnswer((bits / Number(timeText)) / speedUnits[targetUnit]);
+    const bits = Number(sizeText) * SIZE_UNITS10[sizeUnit];
+    return formatAnswer((bits / Number(timeText)) / SPEED_UNITS[targetUnit]);
   }
 
   match = trimmed.match(/^What is the highest value that can be represented with (\d+) (bits?|denary digits?)\?$/);
