@@ -124,6 +124,39 @@ function solvePrompt(prompt) {
   throw new Error(`Unsupported prompt: ${trimmed}`);
 }
 
+function categoryForPrompt(prompt) {
+  const trimmed = prompt.replace(/\r/g, "").trim();
+
+  if (/^Convert [0-9A-F]+ from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/.test(trimmed)) {
+    return "base_conversion";
+  }
+  if (trimmed.startsWith("Add these 8-bit binary numbers:") || trimmed.startsWith("Apply a ")) {
+    return "binary_arithmetic";
+  }
+  if (
+    /^Convert \d+ (bits|bytes|kilobytes|megabytes|gigabytes) to (bits|bytes|kilobytes|megabytes|gigabytes)\. You may use either base-10 or base-2 conventions\.$/.test(trimmed) ||
+    /^How long would it take to transfer a \d+(MB|GB) file at \d+(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/.test(trimmed) ||
+    /^A file takes \d+ seconds to transfer at \d+(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/.test(trimmed) ||
+    /^A \d+(MB|GB) file transfers in \d+ seconds\. What is the average transmission speed in (Mb\/s|Gb\/s)\? \(You may use either base-2 or base-10 conventions for the file size\.\)$/.test(trimmed)
+  ) {
+    return "unit_conversion";
+  }
+  if (
+    /^What is the highest value that can be represented with \d+ (bits?|denary digits?)\?$/.test(trimmed) ||
+    /^How many different values can be represented using \d+ (bits?|denary digits?)\?$/.test(trimmed)
+  ) {
+    return "number_of_values";
+  }
+  if (
+    /^Calculate \d+ (DIV|MOD) \d+\.$/.test(trimmed) ||
+    /^Evaluate the boolean expression: \d+ ([<>=≤≥]{1,2}) \d+\n\(Type True or False\)$/.test(trimmed)
+  ) {
+    return "operators";
+  }
+
+  throw new Error(`Unsupported category prompt: ${trimmed}`);
+}
+
 async function startSession(page) {
   await page.goto("/");
 
@@ -140,6 +173,10 @@ async function getTodayScoreTotal(page) {
   return page.evaluate((ids) =>
     ids.reduce((total, id) => total + Number(document.getElementById(`score-${id}-today`).textContent), 0),
   MASTER_CATEGORY_IDS);
+}
+
+async function getCategoryTodayScore(page, categoryId) {
+  return page.evaluate((id) => Number(document.getElementById(`score-${id}-today`).textContent), categoryId);
 }
 
 async function getPromptText(row) {
@@ -176,28 +213,40 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
   await expect(questions).toHaveCount(10);
   await expect(page.locator("#label-student")).toHaveText("Ada Lovelace");
   await expect.poll(() => getTodayScoreTotal(page)).toBe(0);
+  const expectedScores = Object.fromEntries(MASTER_CATEGORY_IDS.map((id) => [id, 0]));
 
   const firstRow = questions.nth(0);
+  const firstPrompt = await getPromptText(firstRow);
   const secondInput = questions.nth(1).locator("input[type='text']");
-  await firstRow.locator("input[type='text']").fill(solvePrompt(await getPromptText(firstRow)));
+  expectedScores[categoryForPrompt(firstPrompt)] += 1;
+  await firstRow.locator("input[type='text']").fill(solvePrompt(firstPrompt));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(1);
+  await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(firstPrompt))).toBe(expectedScores[categoryForPrompt(firstPrompt)]);
   await expect(secondInput).toBeFocused();
 
   const focusedInput = page.locator(".question-row input[type='text']").nth(1);
-  await focusedInput.fill(solvePrompt(await getPromptText(questions.nth(1))));
+  const secondPrompt = await getPromptText(questions.nth(1));
+  expectedScores[categoryForPrompt(secondPrompt)] += 1;
+  await focusedInput.fill(solvePrompt(secondPrompt));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(2);
+  await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(secondPrompt))).toBe(expectedScores[categoryForPrompt(secondPrompt)]);
   await expect(questions.nth(2).locator("input[type='text']")).toBeFocused();
 
   const lastRow = questions.nth(9);
   const lastPrompt = await getPromptText(lastRow);
+  expectedScores[categoryForPrompt(lastPrompt)] += 1;
   await lastRow.locator("input[type='text']").fill(solvePrompt(lastPrompt));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(3);
+  await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(lastPrompt))).toBe(expectedScores[categoryForPrompt(lastPrompt)]);
   await expect.poll(() => questions.count()).toBe(10);
   const replacementLastInput = questions.nth(9).locator("input[type='text']");
   await expect(replacementLastInput).toBeFocused({ timeout: 5000 });
 
-  await replacementLastInput.fill(solvePrompt(await getPromptText(questions.nth(9))));
+  const replacementLastPrompt = await getPromptText(questions.nth(9));
+  expectedScores[categoryForPrompt(replacementLastPrompt)] += 1;
+  await replacementLastInput.fill(solvePrompt(replacementLastPrompt));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(4);
+  await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(replacementLastPrompt))).toBe(expectedScores[categoryForPrompt(replacementLastPrompt)]);
   await expect.poll(() => questions.count()).toBe(10);
 
   expect(consoleErrors).toEqual([]);
