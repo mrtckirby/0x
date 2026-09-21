@@ -1,0 +1,19 @@
+{
+  "name": "0x",
+  "version": "1.0.0",
+  "description": "Simple client-side Computer Science-oriented mathematics practice built with Pyscript.",
+  "scripts": {
+    "test:smoke": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/mrtckirby/0x"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
