@@ -244,6 +244,20 @@
             "megabyte": "megabytes", 
             "gigabyte": "gigabytes",
         }
+        MAX_NICE_GENERATION_ATTEMPTS = 25
+
+        def build_nice_pool():
+            bases = [8, 80, 800, 4, 40, 400]
+            pool = []
+            for b in bases:
+                for m in range(1, 13):
+                    value = b * m
+                    if value not in pool:
+                        pool.append(value)
+            pool.sort()
+            return pool
+
+        NICE_POOL = build_nice_pool()
 
         # ==========================================
         # DATA CLASSES & STATE
@@ -311,6 +325,32 @@
                     return True
                 carry = bit_sum >> 1
             return False
+
+        def whole_number_or_none(value):
+            int_value = int(value)
+            if abs(value - int_value) <= ABSOLUTE_TOLERANCE:
+                return int_value
+            return None
+
+        def is_realistic_data_transfer_value(value_type, unit, value):
+            if value_type == "time":
+                return value >= 1 and value <= 3600
+            if value_type == "size":
+                if unit == "MB":
+                    return value >= 1 and value <= 1000
+                return value >= 1 and value <= 20
+            if value_type == "speed":
+                if unit == "Mb/s":
+                    return value >= 1 and value <= 1000
+                return value >= 1 and value <= 20
+            return False
+
+        def is_realistic_unit_conversion_amount(unit, value):
+            if unit == "bit":
+                return value >= 4 and value <= 9600
+            if unit == "gigabyte":
+                return value >= 1 and value <= 20
+            return value >= 1 and value <= 1000
 
         def focus_next_available_input(current_input):
             """Advances cursor smoothly to the next available input below."""
@@ -579,6 +619,26 @@
             target_options = [u for u in unit_keys if u != source_unit]
             target_unit = random.choice(target_options)
 
+            if source_unit == "bit" or target_unit == "bit":
+                for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
+                    amount = random.choice(NICE_POOL)
+                    if not is_realistic_unit_conversion_amount(source_unit, amount):
+                        continue
+
+                    decimal_result = amount * UNIT_VALUES[source_unit] / UNIT_VALUES[target_unit]
+                    binary_result = amount * UNIT_VALUES_BINARY[source_unit] / UNIT_VALUES_BINARY[target_unit]
+
+                    if source_unit == "bit" and target_unit != "bit":
+                        whole_result = whole_number_or_none(decimal_result)
+                        if whole_result is not None:
+                            if not is_realistic_unit_conversion_amount(target_unit, whole_result):
+                                continue
+                        elif target_unit == "gigabyte":
+                            continue
+
+                    prompt = "Convert " + str(amount) + " " + UNIT_LABELS[source_unit] + " to " + UNIT_LABELS[target_unit] + ". You may use either base-10 or base-2 conventions."
+                    return QuestionDTO("unit_conversion", prompt, "number_list", [decimal_result, binary_result])
+
             amount = random.randint(1, 500)
             decimal_result = amount * UNIT_VALUES[source_unit] / UNIT_VALUES[target_unit]
             binary_result = amount * UNIT_VALUES_BINARY[source_unit] / UNIT_VALUES_BINARY[target_unit]
@@ -594,6 +654,29 @@
             speed_units = {"Mb/s": 10**6, "Gb/s": 10**9}
             
             if target == "time":
+                for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
+                    s_unit = random.choice(list(size_units.keys()))
+                    sp_unit = random.choice(list(speed_units.keys()))
+                    sp_val = random.choice([10, 50, 100, 200, 500, 1000])
+                    ans_10 = random.choice(NICE_POOL)
+
+                    if not is_realistic_data_transfer_value("time", "", ans_10):
+                        continue
+
+                    speed_bps = sp_val * speed_units[sp_unit]
+                    s_val = whole_number_or_none((ans_10 * speed_bps) / size_units[s_unit]["b10"])
+                    if s_val is None:
+                        continue
+                    if not is_realistic_data_transfer_value("size", s_unit, s_val):
+                        continue
+
+                    bits_10 = s_val * size_units[s_unit]["b10"]
+                    bits_2 = s_val * size_units[s_unit]["b2"]
+                    ans_2 = bits_2 / speed_bps
+
+                    prompt = "How long would it take to transfer a " + str(s_val) + s_unit + " file at " + str(sp_val) + sp_unit + "? Give your answer in seconds. (You may use either base-2 or base-10 conventions.)"
+                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+
                 s_unit = random.choice(list(size_units.keys()))
                 sp_unit = random.choice(list(speed_units.keys()))
                 s_val = random.randint(1, 100)
@@ -610,6 +693,28 @@
                 return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
                 
             elif target == "size":
+                for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
+                    sp_unit = random.choice(list(speed_units.keys()))
+                    sp_val = random.choice([10, 50, 100, 500, 1000])
+                    target_s_unit = random.choice(list(size_units.keys()))
+                    ans_10 = random.choice(NICE_POOL)
+
+                    if not is_realistic_data_transfer_value("size", target_s_unit, ans_10):
+                        continue
+
+                    speed_bps = sp_val * speed_units[sp_unit]
+                    total_bits = ans_10 * size_units[target_s_unit]["b10"]
+                    t_val = whole_number_or_none(total_bits / speed_bps)
+                    if t_val is None:
+                        continue
+                    if not is_realistic_data_transfer_value("time", "", t_val):
+                        continue
+
+                    ans_2 = total_bits / size_units[target_s_unit]["b2"]
+
+                    prompt = "A file takes " + str(t_val) + " seconds to transfer at " + str(sp_val) + sp_unit + ". What is the file size in " + target_s_unit + "? (You may use either base-2 or base-10 conventions.)"
+                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+
                 sp_unit = random.choice(list(speed_units.keys()))
                 t_val = random.choice([10, 30, 60, 120, 300, 600])
                 sp_val = random.choice([10, 50, 100, 500, 1000])
@@ -625,6 +730,32 @@
                 return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
                 
             else: # speed
+                for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
+                    s_unit = random.choice(list(size_units.keys()))
+                    target_sp_unit = random.choice(list(speed_units.keys()))
+                    ans_10 = random.choice(NICE_POOL)
+
+                    if not is_realistic_data_transfer_value("speed", target_sp_unit, ans_10):
+                        continue
+
+                    if s_unit == "MB":
+                        s_val = random.randint(1, 1000)
+                    else:
+                        s_val = random.randint(1, 20)
+
+                    bits_10 = s_val * size_units[s_unit]["b10"]
+                    bits_2 = s_val * size_units[s_unit]["b2"]
+                    t_val = whole_number_or_none(bits_10 / (ans_10 * speed_units[target_sp_unit]))
+                    if t_val is None:
+                        continue
+                    if not is_realistic_data_transfer_value("time", "", t_val):
+                        continue
+
+                    ans_2 = (bits_2 / t_val) / speed_units[target_sp_unit]
+
+                    prompt = "A " + str(s_val) + s_unit + " file transfers in " + str(t_val) + " seconds. What is the average transmission speed in " + target_sp_unit + "? (You may use either base-2 or base-10 conventions for the file size.)"
+                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+
                 s_unit = random.choice(list(size_units.keys()))
                 t_val = random.choice([10, 30, 60, 120, 300])
                 s_val = random.randint(1, 50)
