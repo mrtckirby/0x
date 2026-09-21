@@ -1,21 +1,34 @@
-# cs-maths-practice
+# 0x - a path to mastery in the mathematical skills of Computer Science
 
-Simple client-side CS maths practice prototype built with Pyscript.
+Simple client-side Computer Science-oriented mathematics
+practice built with Pyscript. 
+
 It is designed to run in the browser and to be published as a static
-site.
+site, available [here](https://0x.sunsquashed.uk/).
 
 ## What it does
 
 - prompts for firstname and lastname when the app loads
-- keeps session state in memory only while the browser tab remains open
-- shows a sticky top dashboard with the student's name and scores for question
-  types `a`, `b`, `c`, and `d`
-- renders an endless scrolling list of placeholder questions
-- validates answers reactively with no submit button
-- turns an answer field green when the placeholder answer is correct
+- provides programmatically-generated questions on:
+    - Base conversion
+    - Binary arithmetic
+    - Unit conversion
+    - Number of values
+    - Operators
 
-For the placeholder questions, the correct answer is simply the question number.
-For example, question `12` is correct when the answer box contains `12`.
+- validates answers reactively with no submit button
+- supplies a new question at the end of the list when a user answers a
+  question correctly
+- shows a sticky top dashboard with the student's name and scores
+  for today and all time
+- saves the students's name and scores to local storage
 
 This app intentionally avoids server-side features, databases, APIs, and
 filesystem persistence so it remains suitable for browser-only execution.
+Personal data is stored and processed only on the client, minimising
+data privacy risks.
+
+0x was built by Tom Kirby, with a lot of help from Gemini.
+
+0x is licensed under the GNU GPL version 3. For details see the LICENSING 
+file.
