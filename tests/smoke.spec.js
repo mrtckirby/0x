@@ -140,9 +140,10 @@ function analyzePrompt(prompt) {
     const result =
       op === "<" ? left < right :
       op === ">" ? left > right :
-      op === "==" ? left === right :
+      op === "==" || op === "=" ? left === right :
       op === "≤" ? left <= right :
-      left >= right;
+      op === "≥" ? left >= right :
+      (() => { throw new Error(`Unsupported boolean operator: ${op}`); })();
     return { category: "operators", answer: result ? "True" : "False" };
   }
 
