@@ -16,6 +16,16 @@ const UNIT_VALUES10 = {
 };
 const SIZE_UNITS10 = { MB: 10 ** 6 * 8, GB: 10 ** 9 * 8 };
 const SPEED_UNITS = { "Mb/s": 10 ** 6, "Gb/s": 10 ** 9 };
+const BASE_CONVERSION_PATTERN = /^Convert ([0-9A-F]+) from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/;
+const BIT_SHIFT_PATTERN = /^Apply a (left|right) shift by (\d+) to the 8-bit binary number ([01]{8})\. Give the result in binary\.$/;
+const UNIT_CONVERSION_PATTERN = /^Convert (\d+) (bits|bytes|kilobytes|megabytes|gigabytes) to (bits|bytes|kilobytes|megabytes|gigabytes)\. You may use either base-10 or base-2 conventions\.$/;
+const TRANSFER_TIME_PATTERN = /^How long would it take to transfer a (\d+(?:\.\d+)?)(MB|GB) file at (\d+)(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/;
+const TRANSFER_SIZE_PATTERN = /^A file takes (\d+(?:\.\d+)?) seconds to transfer at (\d+)(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/;
+const TRANSFER_SPEED_PATTERN = /^A (\d+(?:\.\d+)?)(MB|GB) file transfers in (\d+(?:\.\d+)?) seconds\. What is the average transmission speed in (Mb\/s|Gb\/s)\? \(You may use either base-2 or base-10 conventions for the file size\.\)$/;
+const CAPACITY_HIGHEST_PATTERN = /^What is the highest value that can be represented with (\d+) (bits?|denary digits?)\?$/;
+const CAPACITY_COUNT_PATTERN = /^How many different values can be represented using (\d+) (bits?|denary digits?)\?$/;
+const DIV_MOD_PATTERN = /^Calculate (\d+) (DIV|MOD) (\d+)\.$/;
+const BOOLEAN_PATTERN = /^Evaluate the boolean expression: (\d+) ([<>=≤≥]{1,2}) (\d+)\n\(Type True or False\)$/;
 
 function formatBinary(value) {
   return value.toString(2).padStart(8, "0");
@@ -29,85 +39,100 @@ function formatAnswer(value) {
   return String(value);
 }
 
-function solvePrompt(prompt) {
+function analyzePrompt(prompt) {
   const trimmed = prompt.replace(/\r/g, "").trim();
   let match;
 
-  match = trimmed.match(/^Convert ([0-9A-F]+) from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/);
+  match = trimmed.match(BASE_CONVERSION_PATTERN);
   if (match) {
     const [, rawValue, sourceBase, targetBase] = match;
     const baseMap = { binary: 2, denary: 10, hexadecimal: 16 };
     const value = parseInt(rawValue, baseMap[sourceBase]);
-    if (targetBase === "binary") return formatBinary(value);
-    if (targetBase === "denary") return String(value);
-    return formatHex(value);
+    if (targetBase === "binary") return { category: "base_conversion", answer: formatBinary(value) };
+    if (targetBase === "denary") return { category: "base_conversion", answer: String(value) };
+    return { category: "base_conversion", answer: formatHex(value) };
   }
 
   if (trimmed.startsWith("Add these 8-bit binary numbers:")) {
     const sum = [...trimmed.matchAll(/[01]{8}/g)].reduce((total, matchText) => total + parseInt(matchText[0], 2), 0);
-    return formatBinary(sum);
+    return { category: "binary_arithmetic", answer: formatBinary(sum) };
   }
 
-  match = trimmed.match(/^Apply a (left|right) shift by (\d+) to the 8-bit binary number ([01]{8})\. Give the result in binary\.$/);
+  match = trimmed.match(BIT_SHIFT_PATTERN);
   if (match) {
     const [, direction, shiftText, digits] = match;
     const shift = Number(shiftText);
     const value = parseInt(digits, 2);
     const result = direction === "left" ? value << shift : value >> shift;
-    return formatBinary(result);
+    return { category: "binary_arithmetic", answer: formatBinary(result) };
   }
 
-  match = trimmed.match(/^Convert (\d+) (bits|bytes|kilobytes|megabytes|gigabytes) to (bits|bytes|kilobytes|megabytes|gigabytes)\. You may use either base-10 or base-2 conventions\.$/);
+  match = trimmed.match(UNIT_CONVERSION_PATTERN);
   if (match) {
     const [, amountText, sourceUnit, targetUnit] = match;
     const amount = Number(amountText);
-    return formatAnswer((amount * UNIT_VALUES10[sourceUnit.slice(0, -1)]) / UNIT_VALUES10[targetUnit.slice(0, -1)]);
+    return {
+      category: "unit_conversion",
+      answer: formatAnswer((amount * UNIT_VALUES10[sourceUnit.slice(0, -1)]) / UNIT_VALUES10[targetUnit.slice(0, -1)]),
+    };
   }
 
-  match = trimmed.match(/^How long would it take to transfer a (\d+)(MB|GB) file at (\d+)(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/);
+  match = trimmed.match(TRANSFER_TIME_PATTERN);
   if (match) {
     const [, sizeText, sizeUnit, speedText, speedUnit] = match;
     const bits = Number(sizeText) * SIZE_UNITS10[sizeUnit];
-    return formatAnswer(bits / (Number(speedText) * SPEED_UNITS[speedUnit]));
+    return {
+      category: "unit_conversion",
+      answer: formatAnswer(bits / (Number(speedText) * SPEED_UNITS[speedUnit])),
+    };
   }
 
-  match = trimmed.match(/^A file takes (\d+) seconds to transfer at (\d+)(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/);
+  match = trimmed.match(TRANSFER_SIZE_PATTERN);
   if (match) {
     const [, timeText, speedText, speedUnit, targetUnit] = match;
     const bits = Number(timeText) * Number(speedText) * SPEED_UNITS[speedUnit];
-    return formatAnswer(bits / SIZE_UNITS10[targetUnit]);
+    return { category: "unit_conversion", answer: formatAnswer(bits / SIZE_UNITS10[targetUnit]) };
   }
 
-  match = trimmed.match(/^A (\d+)(MB|GB) file transfers in (\d+) seconds\. What is the average transmission speed in (Mb\/s|Gb\/s)\? \(You may use either base-2 or base-10 conventions for the file size\.\)$/);
+  match = trimmed.match(TRANSFER_SPEED_PATTERN);
   if (match) {
     const [, sizeText, sizeUnit, timeText, targetUnit] = match;
     const bits = Number(sizeText) * SIZE_UNITS10[sizeUnit];
-    return formatAnswer((bits / Number(timeText)) / SPEED_UNITS[targetUnit]);
+    return {
+      category: "unit_conversion",
+      answer: formatAnswer((bits / Number(timeText)) / SPEED_UNITS[targetUnit]),
+    };
   }
 
-  match = trimmed.match(/^What is the highest value that can be represented with (\d+) (bits?|denary digits?)\?$/);
+  match = trimmed.match(CAPACITY_HIGHEST_PATTERN);
   if (match) {
     const [, countText, label] = match;
     const count = Number(countText);
-    return label.startsWith("denary") ? String(10 ** count - 1) : String(2 ** count - 1);
+    return {
+      category: "number_of_values",
+      answer: label.startsWith("denary") ? String(10 ** count - 1) : String(2 ** count - 1),
+    };
   }
 
-  match = trimmed.match(/^How many different values can be represented using (\d+) (bits?|denary digits?)\?$/);
+  match = trimmed.match(CAPACITY_COUNT_PATTERN);
   if (match) {
     const [, countText, label] = match;
     const count = Number(countText);
-    return label.startsWith("denary") ? String(10 ** count) : String(2 ** count);
+    return {
+      category: "number_of_values",
+      answer: label.startsWith("denary") ? String(10 ** count) : String(2 ** count),
+    };
   }
 
-  match = trimmed.match(/^Calculate (\d+) (DIV|MOD) (\d+)\.$/);
+  match = trimmed.match(DIV_MOD_PATTERN);
   if (match) {
     const [, leftText, op, rightText] = match;
     const left = Number(leftText);
     const right = Number(rightText);
-    return String(op === "DIV" ? Math.floor(left / right) : left % right);
+    return { category: "operators", answer: String(op === "DIV" ? Math.floor(left / right) : left % right) };
   }
 
-  match = trimmed.match(/^Evaluate the boolean expression: (\d+) ([<>=≤≥]{1,2}) (\d+)\n\(Type True or False\)$/);
+  match = trimmed.match(BOOLEAN_PATTERN);
   if (match) {
     const [, leftText, op, rightText] = match;
     const left = Number(leftText);
@@ -118,43 +143,18 @@ function solvePrompt(prompt) {
       op === "==" ? left === right :
       op === "≤" ? left <= right :
       left >= right;
-    return result ? "True" : "False";
+    return { category: "operators", answer: result ? "True" : "False" };
   }
 
   throw new Error(`Unsupported prompt: ${trimmed}`);
 }
 
+function solvePrompt(prompt) {
+  return analyzePrompt(prompt).answer;
+}
+
 function categoryForPrompt(prompt) {
-  const trimmed = prompt.replace(/\r/g, "").trim();
-
-  if (/^Convert [0-9A-F]+ from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/.test(trimmed)) {
-    return "base_conversion";
-  }
-  if (trimmed.startsWith("Add these 8-bit binary numbers:") || trimmed.startsWith("Apply a ")) {
-    return "binary_arithmetic";
-  }
-  if (
-    /^Convert \d+ (bits|bytes|kilobytes|megabytes|gigabytes) to (bits|bytes|kilobytes|megabytes|gigabytes)\. You may use either base-10 or base-2 conventions\.$/.test(trimmed) ||
-    /^How long would it take to transfer a \d+(MB|GB) file at \d+(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/.test(trimmed) ||
-    /^A file takes \d+ seconds to transfer at \d+(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/.test(trimmed) ||
-    /^A \d+(MB|GB) file transfers in \d+ seconds\. What is the average transmission speed in (Mb\/s|Gb\/s)\? \(You may use either base-2 or base-10 conventions for the file size\.\)$/.test(trimmed)
-  ) {
-    return "unit_conversion";
-  }
-  if (
-    /^What is the highest value that can be represented with \d+ (bits?|denary digits?)\?$/.test(trimmed) ||
-    /^How many different values can be represented using \d+ (bits?|denary digits?)\?$/.test(trimmed)
-  ) {
-    return "number_of_values";
-  }
-  if (
-    /^Calculate \d+ (DIV|MOD) \d+\.$/.test(trimmed) ||
-    /^Evaluate the boolean expression: \d+ ([<>=≤≥]{1,2}) \d+\n\(Type True or False\)$/.test(trimmed)
-  ) {
-    return "operators";
-  }
-
-  throw new Error(`Unsupported category prompt: ${trimmed}`);
+  return analyzePrompt(prompt).category;
 }
 
 async function startSession(page) {
