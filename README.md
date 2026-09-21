@@ -32,3 +32,13 @@ data privacy risks.
 
 0x is licensed under the GNU GPL version 3. For details see the LICENSING 
 file.
+
+## Smoke test
+
+A minimal Playwright smoke test is included to verify app startup and question rendering.
+
+```bash
+npm install
+npx playwright install --with-deps chromium
+npm run test:smoke
+```
