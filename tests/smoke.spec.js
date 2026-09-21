@@ -17,7 +17,7 @@ function formatHex(value) {
 }
 
 function formatAnswer(value) {
-  return Number.isInteger(value) ? String(value) : String(value);
+  return String(value);
 }
 
 function solvePrompt(prompt) {
