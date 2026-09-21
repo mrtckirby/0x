@@ -189,6 +189,7 @@
         import random
         import json
         from pyscript import document, window
+        from pyodide.ffi import create_once_callable, create_proxy
 
         # ==========================================
         # CONSTANTS & CONFIGURATION
@@ -198,8 +199,20 @@
         ABSOLUTE_TOLERANCE = 1e-6
         STATE_KEY = "cs_maths_state"
         
-        TIMEOUT_CALLBACKS = []
+        CALLBACK_PROXIES = []
         ALLOW_MULTI_COLUMN_CARRIES = False
+
+        def hold_proxy(proxy):
+            CALLBACK_PROXIES.append(proxy)
+            return proxy
+
+        def destroy_proxy(proxy):
+            if proxy is None:
+                return
+            try:
+                proxy.destroy()
+            except Exception:
+                pass
 
         MASTER_CATEGORIES = (
             "base_conversion",
@@ -863,6 +876,8 @@
                 
             master = QUESTION_CONFIG[q_type]["master"]
             bg_color = MASTER_DETAILS[master]["bg_color"]
+            row_callback_proxies = []
+            input_listener_proxy = None
 
             row = document.createElement("div")
             row.className = "question-row relative flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm transition-all duration-300"
@@ -890,6 +905,20 @@
 
             input_wrapper.append(input_field, tick_overlay)
             row.append(bar, prompt_div, input_wrapper)
+
+            def hold_row_proxy(proxy):
+                row_callback_proxies.append(proxy)
+                return proxy
+
+            def cleanup_row_proxies():
+                try:
+                    if input_listener_proxy is not None:
+                        input_field.removeEventListener("input", input_listener_proxy)
+                except Exception:
+                    pass
+
+                while row_callback_proxies:
+                    destroy_proxy(row_callback_proxies.pop())
 
             def on_input(e):
                 ans = input_field.value
@@ -948,19 +977,20 @@
                                     new_row.scrollIntoView()
                         except Exception:
                             pass
+                        finally:
+                            cleanup_row_proxies()
 
                     def slide_out_step(*args):
                         try:
                             row.classList.add("row-exit")
-                            TIMEOUT_CALLBACKS.append(remove_and_replace)
-                            window.setTimeout(remove_and_replace, 400)
+                            window.setTimeout(hold_row_proxy(create_once_callable(remove_and_replace)), 400)
                         except Exception:
-                            pass
+                            cleanup_row_proxies()
 
-                    TIMEOUT_CALLBACKS.append(slide_out_step)
-                    window.setTimeout(slide_out_step, 1000)
+                    window.setTimeout(hold_row_proxy(create_once_callable(slide_out_step)), 1000)
 
-            input_field.addEventListener("input", on_input)
+            input_listener_proxy = hold_row_proxy(create_proxy(on_input))
+            input_field.addEventListener("input", input_listener_proxy)
             return row
 
         def append_questions(count):
@@ -1033,13 +1063,14 @@
             refresh_dashboard()
 
         # Wire up buttons and toggles
-        document.getElementById("btn-start").onclick = start_session
-        document.getElementById("toggle-advanced-top").addEventListener("change", handle_toggle_advanced)
-        document.getElementById("toggle-advanced-modal").addEventListener("change", handle_toggle_advanced)
+        document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
+        toggle_advanced_proxy = hold_proxy(create_proxy(handle_toggle_advanced))
+        document.getElementById("toggle-advanced-top").addEventListener("change", toggle_advanced_proxy)
+        document.getElementById("toggle-advanced-modal").addEventListener("change", toggle_advanced_proxy)
         
-        document.getElementById("btn-start-over").onclick = prompt_reset
-        document.getElementById("btn-cancel-reset").onclick = cancel_reset
-        document.getElementById("btn-confirm-reset").onclick = confirm_reset
+        document.getElementById("btn-start-over").onclick = hold_proxy(create_proxy(prompt_reset))
+        document.getElementById("btn-cancel-reset").onclick = hold_proxy(create_proxy(cancel_reset))
+        document.getElementById("btn-confirm-reset").onclick = hold_proxy(create_proxy(confirm_reset))
 
         if load_state():
             document.getElementById("questions-container").innerHTML = ""
