@@ -28,7 +28,7 @@ filesystem persistence so it remains suitable for browser-only execution.
 Personal data is stored and processed only on the client, minimising
 data privacy risks.
 
-0x was built by Tom Kirby, with a lot of help from Gemini.
+0x was built by Tom Kirby, with a lot of help from Gemini and some help from Github Copilot.
 
 0x is licensed under the GNU GPL version 3. For details see the LICENSING 
 file.
