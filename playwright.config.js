@@ -8,7 +8,7 @@ module.exports = defineConfig({
     headless: true,
   },
   webServer: {
-    command: "python3 -m http.server 4173 --bind 127.0.0.1",
+    command: "npm run build:css && python3 -m http.server 4173 --bind 127.0.0.1",
     port: 4173,
     reuseExistingServer: true,
   },

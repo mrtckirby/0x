@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Simple client-side Computer Science-oriented mathematics practice built with Pyscript.",
   "scripts": {
+    "build:css": "tailwindcss -i input.css -o style.css --minify",
+    "watch:css": "tailwindcss -i input.css -o style.css --watch",
     "test:smoke": "playwright test"
   },
   "repository": {
@@ -14,6 +16,8 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "^1.63.0"
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
   }
 }

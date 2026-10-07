@@ -7,8 +7,12 @@
 !tests/**
 !index.html
 !input.css
-!tailwind.min.css
+!.github/
+!.github/workflows/
+!.github/workflows/**
 !README.md
 !favicon.svg
 !favicon.png
 !LICENSE
+style.css
+tailwind.min.css

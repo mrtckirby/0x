@@ -1,2 +1,27 @@
 @import "tailwindcss";
 @source "./index.html";
+
+@theme static {
+  --color-cat-base: #0072B2;
+  --color-cat-base-text: #00507D;
+  --color-cat-binary: #D55E00;
+  --color-cat-binary-text: #9A4300;
+  --color-cat-unit: #009E73;
+  --color-cat-unit-text: #00694E;
+  --color-cat-values: #E69F00;
+  --color-cat-values-text: #8A5E00;
+  --color-cat-operators: #CC79A7;
+  --color-cat-operators-text: #8E3F72;
+  --color-cat-average: #374151;
+  --color-cat-average-text: #374151;
+}
+
+[data-cat="base_conversion"]   { --cat: var(--color-cat-base);      --cat-text: var(--color-cat-base-text); }
+[data-cat="binary_arithmetic"] { --cat: var(--color-cat-binary);    --cat-text: var(--color-cat-binary-text); }
+[data-cat="unit_conversion"]   { --cat: var(--color-cat-unit);      --cat-text: var(--color-cat-unit-text); }
+[data-cat="number_of_values"]  { --cat: var(--color-cat-values);    --cat-text: var(--color-cat-values-text); }
+[data-cat="operators"]         { --cat: var(--color-cat-operators); --cat-text: var(--color-cat-operators-text); }
+[data-cat="average"]           { --cat: var(--color-cat-average);   --cat-text: var(--color-cat-average-text); }
+
+.bg-cat   { background-color: var(--cat); }
+.text-cat { color: var(--cat-text); }
