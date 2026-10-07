@@ -5,3 +5,10 @@
 !playwright.config.js
 !tests/
 !tests/**
+!index.html
+!input.css
+!tailwind.min.css
+!README.md
+!favicon.svg
+!favicon.png
+!LICENSE

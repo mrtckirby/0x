@@ -115,36 +115,36 @@
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 5 Master Score Blocks + Average -->
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-blue-900 text-center leading-tight h-8">Base<br>conversion</span>
-                <div class="text-2xl font-bold text-blue-900 flex items-baseline gap-1">
+                <span class="text-[11px] font-semibold text-sky-800 text-center leading-tight h-8">Base<br>conversion</span>
+                <div class="text-2xl font-bold text-sky-800 flex items-baseline gap-1">
                     <span id="score-base_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-purple-900 text-center leading-tight h-8">Binary<br>arithmetic</span>
-                <div class="text-2xl font-bold text-purple-900 flex items-baseline gap-1">
+                <span class="text-[11px] font-semibold text-violet-800 text-center leading-tight h-8">Binary<br>arithmetic</span>
+                <div class="text-2xl font-bold text-violet-800 flex items-baseline gap-1">
                     <span id="score-binary_arithmetic-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-teal-900 text-center leading-tight h-8">Unit<br>conversion</span>
-                <div class="text-2xl font-bold text-teal-900 flex items-baseline gap-1">
+                <span class="text-[11px] font-semibold text-emerald-800 text-center leading-tight h-8">Unit<br>conversion</span>
+                <div class="text-2xl font-bold text-emerald-800 flex items-baseline gap-1">
                     <span id="score-unit_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-orange-900 text-center leading-tight h-8">Number of<br>values</span>
-                <div class="text-2xl font-bold text-orange-900 flex items-baseline gap-1">
+                <span class="text-[11px] font-semibold text-amber-800 text-center leading-tight h-8">Number of<br>values</span>
+                <div class="text-2xl font-bold text-amber-800 flex items-baseline gap-1">
                     <span id="score-number_of_values-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
                 </div>
             </div>
             <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-indigo-900 text-center leading-tight h-8"><br>Operators</span>
-                <div class="text-2xl font-bold text-indigo-900 flex items-baseline gap-1">
+                <span class="text-[11px] font-semibold text-rose-800 text-center leading-tight h-8"><br>Operators</span>
+                <div class="text-2xl font-bold text-rose-800 flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </div>
@@ -223,11 +223,11 @@
         )
 
         MASTER_DETAILS = {
-            "base_conversion":   {"bg_color": "bg-blue-900"},
-            "binary_arithmetic": {"bg_color": "bg-purple-900"},
-            "unit_conversion":   {"bg_color": "bg-teal-900"},
-            "number_of_values":  {"bg_color": "bg-orange-900"},
-            "operators":         {"bg_color": "bg-indigo-900"},
+            "base_conversion":   {"bg_color": "bg-sky-800"},
+            "binary_arithmetic": {"bg_color": "bg-violet-800"},
+            "unit_conversion":   {"bg_color": "bg-emerald-800"},
+            "number_of_values":  {"bg_color": "bg-amber-800"},
+            "operators":         {"bg_color": "bg-rose-800"},
         }
 
         LEGACY_TYPE_MAP = {
@@ -862,24 +862,50 @@
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
         }
 
+        STEER_STRENGTH = 0.5
+        STEER_MIN = 0.4
+        STEER_MAX = 2.5
+        STEER_RAMP_TOTAL = 20
+
+        def steer_multipliers(scores_by_master):
+            n = len(MASTER_CATEGORIES)
+            total = sum(scores_by_master.get(mc, 0) for mc in MASTER_CATEGORIES)
+            if total <= 0:
+                return {mc: 1.0 for mc in MASTER_CATEGORIES}
+            strength = STEER_STRENGTH * min(1.0, total / STEER_RAMP_TOTAL)
+            mult = {}
+            for mc in MASTER_CATEGORIES:
+                share = scores_by_master.get(mc, 0) / total
+                deficit = (1.0 / n) - share
+                mult[mc] = max(STEER_MIN, min(STEER_MAX, 1.0 + strength * deficit * n))
+            return mult
+
+        def weighted_pick(choices, weights):
+            r = random.random() * sum(weights)
+            cumulative = 0.0
+            for choice, weight in zip(choices, weights):
+                cumulative += weight
+                if r <= cumulative:
+                    return choice
+            return choices[-1]
+
         def choose_weighted_question_type():
-            choices = []
-            weights = []
+            by_master = {}
             for q_type, config in QUESTION_CONFIG.items():
                 if config["advanced"] and not state.advanced_mode:
                     continue
-                choices.append(q_type)
-                weights.append(config["weight"])
+                by_master.setdefault(config["master"], []).append(q_type)
 
-            total_weight = sum(weights)
-            r = random.random() * total_weight
-            
-            cumulative = 0.0
-            for i in range(len(choices)):
-                cumulative += weights[i]
-                if r <= cumulative:
-                    return choices[i]
-            return choices[0]
+            scores = {mc: 0 for mc in MASTER_CATEGORIES}
+            for sub_type, count in state.all_time_scores.items():
+                if sub_type in QUESTION_CONFIG:
+                    scores[QUESTION_CONFIG[sub_type]["master"]] += count
+            mult = steer_multipliers(scores)
+
+            masters = list(by_master.keys())
+            master = weighted_pick(masters, [mult.get(mc, 1.0) for mc in masters])
+            types = by_master[master]
+            return weighted_pick(types, [QUESTION_CONFIG[t]["weight"] for t in types])
 
         # ==========================================
         # STATE MANAGEMENT (LocalStorage)

@@ -16,6 +16,7 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Number of values
     - Operators
 
+- gently favours topics with lower all-time correct counts when choosing new questions
 - validates answers reactively with no submit button
 - supplies a new question at the end of the list when a user answers a
   question correctly
