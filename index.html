@@ -862,24 +862,50 @@
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
         }
 
+        STEER_STRENGTH = 0.5
+        STEER_MIN = 0.4
+        STEER_MAX = 2.5
+        STEER_RAMP_TOTAL = 20
+
+        def steer_multipliers(scores_by_master):
+            n = len(MASTER_CATEGORIES)
+            total = sum(scores_by_master.get(mc, 0) for mc in MASTER_CATEGORIES)
+            if total <= 0:
+                return {mc: 1.0 for mc in MASTER_CATEGORIES}
+            strength = STEER_STRENGTH * min(1.0, total / STEER_RAMP_TOTAL)
+            mult = {}
+            for mc in MASTER_CATEGORIES:
+                share = scores_by_master.get(mc, 0) / total
+                deficit = (1.0 / n) - share
+                mult[mc] = max(STEER_MIN, min(STEER_MAX, 1.0 + strength * deficit * n))
+            return mult
+
+        def weighted_pick(choices, weights):
+            r = random.random() * sum(weights)
+            cumulative = 0.0
+            for choice, weight in zip(choices, weights):
+                cumulative += weight
+                if r <= cumulative:
+                    return choice
+            return choices[-1]
+
         def choose_weighted_question_type():
-            choices = []
-            weights = []
+            by_master = {}
             for q_type, config in QUESTION_CONFIG.items():
                 if config["advanced"] and not state.advanced_mode:
                     continue
-                choices.append(q_type)
-                weights.append(config["weight"])
+                by_master.setdefault(config["master"], []).append(q_type)
 
-            total_weight = sum(weights)
-            r = random.random() * total_weight
-            
-            cumulative = 0.0
-            for i in range(len(choices)):
-                cumulative += weights[i]
-                if r <= cumulative:
-                    return choices[i]
-            return choices[0]
+            scores = {mc: 0 for mc in MASTER_CATEGORIES}
+            for sub_type, count in state.all_time_scores.items():
+                if sub_type in QUESTION_CONFIG:
+                    scores[QUESTION_CONFIG[sub_type]["master"]] += count
+            mult = steer_multipliers(scores)
+
+            masters = list(by_master.keys())
+            master = weighted_pick(masters, [mult.get(mc, 1.0) for mc in masters])
+            types = by_master[master]
+            return weighted_pick(types, [QUESTION_CONFIG[t]["weight"] for t in types])
 
         # ==========================================
         # STATE MANAGEMENT (LocalStorage)
