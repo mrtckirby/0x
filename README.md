@@ -34,6 +34,12 @@ data privacy risks.
 0x is licensed under the GNU GPL version 3. For details see the LICENSING 
 file.
 
+## Styling
+
+Category colours are defined once, in `input.css` (as `@theme` tokens bound
+via `data-cat` attributes). `style.css` is generated and not committed: run
+`npm ci && npm run build:css` to build it (CI does this on deploy).
+
 ## Smoke test
 
 A minimal Playwright smoke test is included to verify app startup and question rendering.

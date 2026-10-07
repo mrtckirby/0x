@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./favicon.png">
     
     <!-- Local Self-Hosted Tailwind CSS -->
-    <link rel="stylesheet" href="./tailwind.min.css">
+    <link rel="stylesheet" href="./style.css">
     
     <!-- PyScript runtime -->
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
@@ -114,44 +114,44 @@
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 5 Master Score Blocks + Average -->
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-sky-800 text-center leading-tight h-8">Base<br>conversion</span>
-                <div class="text-2xl font-bold text-sky-800 flex items-baseline gap-1">
+            <div data-cat="base_conversion" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-base_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-violet-800 text-center leading-tight h-8">Binary<br>arithmetic</span>
-                <div class="text-2xl font-bold text-violet-800 flex items-baseline gap-1">
+            <div data-cat="binary_arithmetic" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Binary<br>arithmetic</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-binary_arithmetic-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-emerald-800 text-center leading-tight h-8">Unit<br>conversion</span>
-                <div class="text-2xl font-bold text-emerald-800 flex items-baseline gap-1">
+            <div data-cat="unit_conversion" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Unit<br>conversion</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-unit_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-amber-800 text-center leading-tight h-8">Number of<br>values</span>
-                <div class="text-2xl font-bold text-amber-800 flex items-baseline gap-1">
+            <div data-cat="number_of_values" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Number of<br>values</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-number_of_values-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-rose-800 text-center leading-tight h-8"><br>Operators</span>
-                <div class="text-2xl font-bold text-rose-800 flex items-baseline gap-1">
+            <div data-cat="operators" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Operators</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </div>
             </div>
-            <div class="flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-green-900 text-center leading-tight h-8"><br>Average</span>
-                <div class="text-2xl font-bold text-green-900 flex items-baseline gap-1">
+            <div data-cat="average" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Average</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-avg-today" class="score-val">0.00</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-avg-all">0.00</span>)</span>
                 </div>
@@ -221,14 +221,6 @@
             "number_of_values",
             "operators",
         )
-
-        MASTER_DETAILS = {
-            "base_conversion":   {"bg_color": "bg-sky-800"},
-            "binary_arithmetic": {"bg_color": "bg-violet-800"},
-            "unit_conversion":   {"bg_color": "bg-emerald-800"},
-            "number_of_values":  {"bg_color": "bg-amber-800"},
-            "operators":         {"bg_color": "bg-rose-800"},
-        }
 
         LEGACY_TYPE_MAP = {
             "a": "base_conversion",
@@ -1032,7 +1024,6 @@
             if q_type not in QUESTION_CONFIG: q_type = "base_conversion"
                 
             master = QUESTION_CONFIG[q_type]["master"]
-            bg_color = MASTER_DETAILS[master]["bg_color"]
             row_callback_proxies = []
             input_listener_proxy = None
 
@@ -1040,7 +1031,8 @@
             row.className = "question-row relative flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm transition-all duration-300"
 
             bar = document.createElement("div")
-            bar.className = "hidden md:block w-2 h-14 rounded-full opacity-80 " + bg_color
+            bar.className = "hidden md:block w-2 h-14 rounded-full opacity-80 bg-cat"
+            bar.setAttribute("data-cat", master)
 
             prompt_div = document.createElement("div")
             prompt_div.className = "flex-1 text-[17px] font-semibold whitespace-pre-wrap pl-2 leading-relaxed"

@@ -253,3 +253,26 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
+
+test("category colours are defined in CSS for every data-cat", async ({ page }) => {
+  await page.goto("/");
+  const keys = [...MASTER_CATEGORY_IDS, "average"];
+  const values = await page.evaluate((cats) => cats.map((key) => {
+    const el = document.createElement("div");
+    el.setAttribute("data-cat", key);
+    document.body.appendChild(el);
+    const cs = getComputedStyle(el);
+    const result = {
+      cat: cs.getPropertyValue("--cat").trim(),
+      text: cs.getPropertyValue("--cat-text").trim(),
+    };
+    el.remove();
+    return result;
+  }), keys);
+  for (const v of values) {
+    expect(v.cat).not.toBe("");
+    expect(v.text).not.toBe("");
+  }
+  const catValues = values.slice(0, MASTER_CATEGORY_IDS.length).map((v) => v.cat);
+  expect(new Set(catValues).size).toBe(MASTER_CATEGORY_IDS.length);
+});
