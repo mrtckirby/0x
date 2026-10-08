@@ -598,7 +598,8 @@
 
         def generate_bit_shift_question():
             direction = random.choice(["left", "right"])
-            shift = random.randint(1, 3)
+            shift = random.randint(1, 4)
+            factor = 1 << shift
 
             if direction == "left":
                 max_value = 255 >> shift
@@ -608,7 +609,10 @@
                 value = random.randint(0, 255)
                 result = value >> shift
 
-            prompt = "Apply a " + direction + " shift by " + str(shift) + " to the 8-bit binary number " + format_binary(value) + ". Give the result in binary."
+            if direction == "left":
+                prompt = "Multiply the 8-bit binary number " + format_binary(value) + " by " + str(factor) + ". Give the result in binary."
+            else:
+                prompt = "Divide the 8-bit binary number " + format_binary(value) + " by " + str(factor) + ", discarding any remainder. Give the result in binary."
             return QuestionDTO("binary_shift", prompt, "binary_string", format_binary(result))
 
         def generate_unit_conversion_question():
@@ -942,7 +946,7 @@
                             q_type = LEGACY_TYPE_MAP[q_type]
                         elif q_type == "b":
                             prompt = q_data.get("prompt", "")
-                            if "shift by" in prompt.lower():
+                            if "shift by" in prompt.lower() or "discarding any remainder" in prompt.lower() or prompt.startswith("Multiply the 8-bit binary number"):
                                 q_type = "binary_shift"
                             else:
                                 q_type = "binary_addition"
