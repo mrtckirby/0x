@@ -17,7 +17,7 @@ const UNIT_VALUES10 = {
 const SIZE_UNITS10 = { MB: 10 ** 6 * 8, GB: 10 ** 9 * 8 };
 const SPEED_UNITS = { "Mb/s": 10 ** 6, "Gb/s": 10 ** 9 };
 const BASE_CONVERSION_PATTERN = /^Convert ([0-9A-F]+) from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/;
-const BIT_SHIFT_PATTERN = /^Apply a (left|right) shift by (\d+) to the 8-bit binary number ([01]{8})\. Give the result in binary\.$/;
+const BIT_SHIFT_PATTERN = /^(Multiply|Divide) the 8-bit binary number ([01]{8}) by (\d+)(?:, discarding any remainder)?\. Give the result in binary\.$/;
 const UNIT_CONVERSION_PATTERN = /^Convert (\d+) (bits|bytes|kilobytes|megabytes|gigabytes) to (bits|bytes|kilobytes|megabytes|gigabytes)\. You may use either base-10 or base-2 conventions\.$/;
 const TRANSFER_TIME_PATTERN = /^How long would it take to transfer a (\d+(?:\.\d+)?)(MB|GB) file at (\d+)(Mb\/s|Gb\/s)\? Give your answer in seconds\. \(You may use either base-2 or base-10 conventions\.\)$/;
 const TRANSFER_SIZE_PATTERN = /^A file takes (\d+(?:\.\d+)?) seconds to transfer at (\d+)(Mb\/s|Gb\/s)\. What is the file size in (MB|GB)\? \(You may use either base-2 or base-10 conventions\.\)$/;
@@ -60,10 +60,10 @@ function analyzePrompt(prompt) {
 
   match = trimmed.match(BIT_SHIFT_PATTERN);
   if (match) {
-    const [, direction, shiftText, digits] = match;
-    const shift = Number(shiftText);
+    const [, operation, digits, factorText] = match;
+    const factor = Number(factorText);
     const value = parseInt(digits, 2);
-    const result = direction === "left" ? value << shift : value >> shift;
+    const result = operation === "Multiply" ? value * factor : Math.floor(value / factor);
     return { category: "binary_arithmetic", answer: formatBinary(result) };
   }
 
