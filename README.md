@@ -15,6 +15,7 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Unit conversion
     - Number of values
     - Operators
+    - Bit patterns (advanced mode): IPv4 addressing and representing images
 
 - gently favours topics with lower all-time correct counts when choosing new questions
 - validates answers reactively with no submit button
