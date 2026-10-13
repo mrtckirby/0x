@@ -1007,7 +1007,7 @@
                 unit, expected = "bytes", size_bits // 8
             else:
                 unit, expected = "bits", size_bits
-            prompt = "What is the minimum file size of the image shown, uncompressed and ignoring any metadata?" + common + " Give your answer in " + unit + "."
+            prompt = "What is the minimum file size of the image shown, ignoring any metadata?" + common + " Give your answer in " + unit + "."
             return QuestionDTO("image_representation", prompt, "integer", expected, grid)
 
         # ==========================================
