@@ -58,7 +58,8 @@ def check_config():
     ip = {k: v for k, v in CONFIG.items() if v["master"] == "bit_patterns"}
     assert set(ip) == IP_TYPES | {IMAGE_TYPE}
     assert sorted(v["label"] for v in ip.values()) == sorted(LABELS)
-    assert all(v["advanced"] for v in ip.values())
+    assert all(v["advanced"] for k, v in ip.items() if k != IMAGE_TYPE)
+    assert not ip[IMAGE_TYPE]["advanced"]
     assert len({v["weight"] for v in ip.values()}) == 1
 
     for advanced in (False, True):
@@ -69,8 +70,8 @@ def check_config():
         if advanced:
             assert IP_TYPES | {IMAGE_TYPE} <= seen, (IP_TYPES | {IMAGE_TYPE}) - seen
         else:
-            assert not ((IP_TYPES | {IMAGE_TYPE}) & seen)
-            assert not any(CONFIG[t]["master"] == "bit_patterns" for t in seen)
+            assert not (IP_TYPES & seen)
+            assert IMAGE_TYPE in seen
     state.advanced_mode = False
 
 
@@ -168,7 +169,7 @@ def check_images():
         assert q.question_type == IMAGE_TYPE and q.validator_type == "integer"
         grid = q.grid
         h, w = len(grid), len(grid[0])
-        assert 2 <= w <= 8 and 2 <= h <= 8 and all(len(r) == w for r in grid)
+        assert 2 <= h <= w <= 8 and all(len(r) == w for r in grid)
         flat = [c for r in grid for c in r]
         assert set(flat) <= master
         distinct = len(set(flat))

@@ -978,8 +978,9 @@
             return list(random.choice([combo for count, combo in options if count == fewest]))
 
         def generate_image_grid():
+            # Landscape only: height never exceeds width (square grids allowed).
             w = random.randint(IMAGE_MIN_SIZE, IMAGE_MAX_SIZE)
-            h = random.randint(IMAGE_MIN_SIZE, IMAGE_MAX_SIZE)
+            h = random.randint(IMAGE_MIN_SIZE, w)
             cells = w * h
             depths = [d for d, (low, high) in IMAGE_DEPTH_RANGES.items() if low <= cells]
             low, high = IMAGE_DEPTH_RANGES[random.choice(depths)]
@@ -1033,7 +1034,7 @@
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
 
-            # Bit patterns: advanced only; subcategories are equally weighted.
+            # Bit patterns: IP questions are advanced only; image questions are not; subcategories are equally weighted.
             "ip_network_address":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Network address (IP/CIDR)",            "generator": generate_ip_network_address_question},
             "ip_host_id":            {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Host ID (IP/CIDR)",                    "generator": generate_ip_host_id_question},
             "ip_cidr_to_mask":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "CIDR → dotted-decimal mask",           "generator": generate_ip_cidr_to_mask_question},
@@ -1042,7 +1043,7 @@
             "ip_min_subnet":         {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Minimum subnet for host requirement",  "generator": generate_ip_min_subnet_question},
             "ip_broadcast_address":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Broadcast address (IP/CIDR)",          "generator": generate_ip_broadcast_question},
             "ip_first_last_host":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "First/last usable host",               "generator": generate_ip_first_last_host_question},
-            "image_representation":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Representing images (colour depth / file size)", "generator": generate_image_representation_question},
+            "image_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing images (colour depth / file size)", "generator": generate_image_representation_question},
         }
 
         STEER_STRENGTH = 0.5
