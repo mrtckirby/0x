@@ -12,6 +12,8 @@
   --color-cat-values-text: #8A5E00;
   --color-cat-operators: #CC79A7;
   --color-cat-operators-text: #8E3F72;
+  --color-cat-bits: #56B4E9;
+  --color-cat-bits-text: #1B6A99;
   --color-cat-average: #374151;
   --color-cat-average-text: #374151;
 }
@@ -21,6 +23,7 @@
 [data-cat="unit_conversion"]   { --cat: var(--color-cat-unit);      --cat-text: var(--color-cat-unit-text); }
 [data-cat="number_of_values"]  { --cat: var(--color-cat-values);    --cat-text: var(--color-cat-values-text); }
 [data-cat="operators"]         { --cat: var(--color-cat-operators); --cat-text: var(--color-cat-operators-text); }
+[data-cat="bit_patterns"]      { --cat: var(--color-cat-bits);      --cat-text: var(--color-cat-bits-text); }
 [data-cat="average"]           { --cat: var(--color-cat-average);   --cat-text: var(--color-cat-average-text); }
 
 .bg-cat   { background-color: var(--cat); }

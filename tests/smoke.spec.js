@@ -6,6 +6,7 @@ const MASTER_CATEGORY_IDS = [
   "unit_conversion",
   "number_of_values",
   "operators",
+  "bit_patterns",
 ];
 const UNIT_VALUES10 = {
   bit: 1,
@@ -275,4 +276,18 @@ test("category colours are defined in CSS for every data-cat", async ({ page }) 
   }
   const catValues = values.slice(0, MASTER_CATEGORY_IDS.length).map((v) => v.cat);
   expect(new Set(catValues).size).toBe(MASTER_CATEGORY_IDS.length);
+});
+
+test("Bit patterns master category is visible and has no IP questions outside advanced mode", async ({ page }) => {
+  await startSession(page);
+
+  await expect(page.locator('[data-cat="bit_patterns"]').first()).toBeVisible();
+  await expect(page.locator("#score-bit_patterns-today")).toHaveText("0");
+
+  const questions = page.locator("#questions-container .question-row");
+  await expect(questions).toHaveCount(10);
+  const prompts = await questions.evaluateAll((rows) => rows.map((row) => row.children[1].innerText));
+  for (const prompt of prompts) {
+    expect(prompt).not.toMatch(/subnet|CIDR|Broadcast Address|Network Address|Host ID/i);
+  }
 });

@@ -113,7 +113,7 @@
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
-            <!-- 5 Master Score Blocks + Average -->
+            <!-- 6 Master Score Blocks + Average -->
             <div data-cat="base_conversion" class="flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
                 <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -147,6 +147,13 @@
                 <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
+                </div>
+            </div>
+            <div data-cat="bit_patterns" class="flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Bit<br>patterns</span>
+                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                    <span id="score-bit_patterns-today" class="score-val">0</span>
+                    <span class="text-base font-medium opacity-75">(<span id="score-bit_patterns-all">0</span>)</span>
                 </div>
             </div>
             <div data-cat="average" class="flex flex-col items-center min-w-[100px] px-1">
@@ -220,6 +227,7 @@
             "unit_conversion",
             "number_of_values",
             "operators",
+            "bit_patterns",
         )
 
         LEGACY_TYPE_MAP = {
@@ -350,6 +358,27 @@
                 return 1 <= value <= 20
             return 1 <= value <= 1000
 
+        def parse_dotted_decimal(value):
+            """Parses a dotted-decimal address into a tuple of 4 ints, or None. Tolerates whitespace and leading zeroes."""
+            parts = [p.strip() for p in value.strip().split(".")]
+            if len(parts) != 4:
+                return None
+            octets = []
+            for p in parts:
+                if p == "" or any(c not in "0123456789" for c in p):
+                    return None
+                octets.append(int(p))
+            return tuple(octets)
+
+        def parse_cidr_prefix(value):
+            """Parses a CIDR prefix with or without a leading slash, or None."""
+            cleaned = value.strip()
+            if cleaned.startswith("/"):
+                cleaned = cleaned[1:].strip()
+            if cleaned == "" or any(c not in "0123456789" for c in cleaned):
+                return None
+            return int(cleaned)
+
         def focus_next_available_input(current_input):
             """Advances cursor smoothly to the next available input below."""
             inputs = document.querySelectorAll(".question-row input[type='text']")
@@ -438,6 +467,12 @@
                 cleaned_ans = answer.replace(" ", "")
                 return cleaned_ans == expected
                 
+            elif v_type == "ip_address":
+                return parse_dotted_decimal(answer) == expected
+
+            elif v_type == "cidr_prefix":
+                return parse_cidr_prefix(answer) == expected
+
             elif v_type == "number_list":
                 parsed = parse_float(answer)
                 all_int = True
@@ -834,6 +869,83 @@
             prompt = "Evaluate the boolean expression: " + str(a) + " " + op + " " + str(b) + "\n(Type True or False)"
             return QuestionDTO("operators_boolean", prompt, "boolean", expected)
 
+        # Bit patterns (IPv4 addressing). Prefixes /31 and /32 are excluded because their usable-host semantics vary.
+        IP_MIN_PREFIX = 8
+        IP_MAX_PREFIX = 30
+
+        def prefix_to_mask(prefix):
+            return (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF
+
+        def int_to_dotted(value):
+            return ".".join(str((value >> shift) & 255) for shift in (24, 16, 8, 0))
+
+        def dotted_to_tuple(value):
+            return tuple((value >> shift) & 255 for shift in (24, 16, 8, 0))
+
+        def generate_ip_with_prefix(min_prefix=IP_MIN_PREFIX, max_prefix=IP_MAX_PREFIX):
+            """Random unicast IPv4 address and prefix whose host bits are neither all 0s nor all 1s."""
+            prefix = random.randint(min_prefix, max_prefix)
+            mask = prefix_to_mask(prefix)
+            while True:
+                first = random.randint(1, 223)
+                if first == 127:
+                    continue
+                ip = (first << 24) | random.getrandbits(24)
+                host = ip & ~mask & 0xFFFFFFFF
+                if host != 0 and host != (~mask & 0xFFFFFFFF):
+                    return ip, prefix
+
+        def generate_ip_network_address_question():
+            ip, prefix = generate_ip_with_prefix()
+            prompt = "Given the IP address " + int_to_dotted(ip) + "/" + str(prefix) + ", state the Network Address in dotted-decimal notation."
+            expected = dotted_to_tuple(ip & prefix_to_mask(prefix))
+            return QuestionDTO("ip_network_address", prompt, "ip_address", expected)
+
+        def generate_ip_host_id_question():
+            ip, prefix = generate_ip_with_prefix()
+            prompt = "Given the IP address " + int_to_dotted(ip) + "/" + str(prefix) + ", state the Host ID portion in dotted-decimal notation."
+            expected = dotted_to_tuple(ip & ~prefix_to_mask(prefix) & 0xFFFFFFFF)
+            return QuestionDTO("ip_host_id", prompt, "ip_address", expected)
+
+        def generate_ip_cidr_to_mask_question():
+            prefix = random.randint(IP_MIN_PREFIX, IP_MAX_PREFIX)
+            prompt = "Convert the CIDR subnet mask /" + str(prefix) + " into dotted-decimal notation."
+            return QuestionDTO("ip_cidr_to_mask", prompt, "ip_address", dotted_to_tuple(prefix_to_mask(prefix)))
+
+        def generate_ip_mask_to_cidr_question():
+            prefix = random.randint(IP_MIN_PREFIX, IP_MAX_PREFIX)
+            prompt = "Convert the subnet mask " + int_to_dotted(prefix_to_mask(prefix)) + " into CIDR prefix notation (e.g. /12)."
+            return QuestionDTO("ip_mask_to_cidr", prompt, "cidr_prefix", prefix)
+
+        def generate_ip_usable_hosts_question():
+            prefix = random.randint(20, IP_MAX_PREFIX)
+            prompt = "How many usable host IP addresses are available in a /" + str(prefix) + " subnet?"
+            return QuestionDTO("ip_usable_hosts", prompt, "integer", 2 ** (32 - prefix) - 2)
+
+        def generate_ip_min_subnet_question():
+            hosts = random.randint(2, 2000)
+            host_bits = (hosts + 1).bit_length()
+            prompt = "What is the minimum CIDR prefix needed to accommodate " + str(hosts) + " usable host devices? (e.g. /12)"
+            return QuestionDTO("ip_min_subnet", prompt, "cidr_prefix", 32 - host_bits)
+
+        def generate_ip_broadcast_question():
+            ip, prefix = generate_ip_with_prefix()
+            prompt = "Find the Broadcast Address for " + int_to_dotted(ip) + "/" + str(prefix) + "."
+            expected = dotted_to_tuple(ip | (~prefix_to_mask(prefix) & 0xFFFFFFFF))
+            return QuestionDTO("ip_broadcast_address", prompt, "ip_address", expected)
+
+        def generate_ip_first_last_host_question():
+            ip, prefix = generate_ip_with_prefix(IP_MIN_PREFIX, IP_MAX_PREFIX)
+            mask = prefix_to_mask(prefix)
+            network = ip & mask
+            broadcast = network | (~mask & 0xFFFFFFFF)
+            if random.random() < 0.5:
+                word, expected = "first", network + 1
+            else:
+                word, expected = "last", broadcast - 1
+            prompt = "What is the " + word + " usable host IP address in the " + int_to_dotted(network) + "/" + str(prefix) + " subnet?"
+            return QuestionDTO("ip_first_last_host", prompt, "ip_address", dotted_to_tuple(expected))
+
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
         # ==========================================
@@ -856,6 +968,16 @@
 
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
+
+            # Bit patterns: advanced only; subcategories are equally weighted.
+            "ip_network_address":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Network address (IP/CIDR)",            "generator": generate_ip_network_address_question},
+            "ip_host_id":            {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Host ID (IP/CIDR)",                    "generator": generate_ip_host_id_question},
+            "ip_cidr_to_mask":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "CIDR → dotted-decimal mask",           "generator": generate_ip_cidr_to_mask_question},
+            "ip_mask_to_cidr":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Dotted-decimal mask → CIDR",           "generator": generate_ip_mask_to_cidr_question},
+            "ip_usable_hosts":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Usable hosts in subnet",               "generator": generate_ip_usable_hosts_question},
+            "ip_min_subnet":         {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Minimum subnet for host requirement",  "generator": generate_ip_min_subnet_question},
+            "ip_broadcast_address":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Broadcast address (IP/CIDR)",          "generator": generate_ip_broadcast_question},
+            "ip_first_last_host":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "First/last usable host",               "generator": generate_ip_first_last_host_question},
         }
 
         STEER_STRENGTH = 0.5
