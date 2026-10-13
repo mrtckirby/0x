@@ -1001,7 +1001,7 @@
             size_bits = depth * w * h
             common = " The image is uncompressed and the same number of bits is used for every pixel, using the minimum number of bits per pixel."
             if random.random() < 0.5:
-                prompt = "What is the minimum colour depth needed to represent the image shown?" + common + " This question is always about the image shown. Give your answer in bits."
+                prompt = "What is the minimum colour depth needed to represent the image shown?" + common + " Give your answer in bits."
                 return QuestionDTO("image_representation", prompt, "integer", depth, grid)
             if size_bits % 8 == 0 and random.random() < 0.5:
                 unit, expected = "bytes", size_bits // 8
