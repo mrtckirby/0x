@@ -57,7 +57,7 @@
         }
 
         @keyframes slide-out {
-            0% { opacity: 1; max-height: 150px; margin-bottom: 1rem; }
+            0% { opacity: 1; max-height: 450px; margin-bottom: 1rem; }
             100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; border-width: 0; }
         }
 
@@ -195,6 +195,7 @@
     <script type="py">
         import random
         import json
+        from itertools import combinations
         from pyscript import document, window
         from pyodide.ffi import create_once_callable, create_proxy
 
@@ -278,11 +279,12 @@
                 self.all_time_scores = {}
 
         class QuestionDTO:
-            def __init__(self, question_type, prompt, validator_type, expected):
+            def __init__(self, question_type, prompt, validator_type, expected, grid=None):
                 self.question_type = question_type
                 self.prompt = prompt
                 self.validator_type = validator_type
                 self.expected = expected
+                self.grid = grid  # optional graphic: list of rows of hex colours
 
         state = AppState()
 
@@ -946,6 +948,70 @@
             prompt = "What is the " + word + " usable host IP address in the " + int_to_dotted(network) + "/" + str(prefix) + " subnet?"
             return QuestionDTO("ip_first_last_host", prompt, "ip_address", dotted_to_tuple(expected))
 
+        # Representing images: Okabe-Ito based master palette (colourblind-safe).
+        IMAGE_MASTER_PALETTE = [
+            "#000000", "#FFFFFF", "#808080", "#F0E442", "#56B4E9",
+            "#E69F00", "#009E73", "#CC79A7", "#D55E00",
+        ]
+        IMAGE_MIN_SIZE = 2
+        IMAGE_MAX_SIZE = 8
+        IMAGE_MAX_CELLS = 16
+        # Bit depth -> (fewest, most) colours needing that depth; depth = (n - 1).bit_length().
+        IMAGE_DEPTH_RANGES = {1: (2, 2), 2: (3, 4), 3: (5, 8), 4: (9, 9)}
+        # Pairs that are hard to tell apart. Soft rule: of all C(9, n) palettes of size n, pick
+        # at random among those with the fewest flagged pairs. That is 0 pairs up to n=6 (only 6
+        # colours can avoid every pair); larger palettes include only the unavoidable ones.
+        IMAGE_SIMILAR_PAIRS = [
+            frozenset(["#E69F00", "#D55E00"]),
+            frozenset(["#808080", "#009E73"]),
+            frozenset(["#CC79A7", "#808080"]),
+            frozenset(["#FFFFFF", "#F0E442"]),
+        ]
+
+        def count_similar_pairs(palette):
+            return sum(1 for pair in IMAGE_SIMILAR_PAIRS if pair <= set(palette))
+
+        def choose_image_palette(n):
+            options = []
+            for combo in combinations(IMAGE_MASTER_PALETTE, n):
+                options.append((count_similar_pairs(combo), combo))
+            fewest = min(count for count, combo in options)
+            return list(random.choice([combo for count, combo in options if count == fewest]))
+
+        def generate_image_grid():
+            # Landscape only (height never exceeds width) and at most IMAGE_MAX_CELLS pixels.
+            w = random.randint(IMAGE_MIN_SIZE, IMAGE_MAX_SIZE)
+            h = random.randint(IMAGE_MIN_SIZE, min(w, IMAGE_MAX_CELLS // w))
+            cells = w * h
+            depths = [d for d, (low, high) in IMAGE_DEPTH_RANGES.items() if low <= cells]
+            low, high = IMAGE_DEPTH_RANGES[random.choice(depths)]
+            n = random.randint(low, min(high, cells))
+            palette = choose_image_palette(n)
+            # One of each colour in distinct cells, the rest random, then shuffle.
+            colours = list(palette)
+            while len(colours) < cells:
+                colours.append(random.choice(palette))
+            random.shuffle(colours)
+            return [colours[r * w:(r + 1) * w] for r in range(h)]
+
+        def generate_image_representation_question():
+            grid = generate_image_grid()
+            h = len(grid)
+            w = len(grid[0])
+            distinct = len(set(c for row in grid for c in row))
+            depth = (distinct - 1).bit_length()
+            size_bits = depth * w * h
+            common = " The image is uncompressed and the same number of bits is used for every pixel, using the minimum number of bits per pixel."
+            if random.random() < 0.5:
+                prompt = "What is the minimum colour depth needed to represent the image shown?" + common + " Give your answer in bits."
+                return QuestionDTO("image_representation", prompt, "integer", depth, grid)
+            if size_bits % 8 == 0 and random.random() < 0.5:
+                unit, expected = "bytes", size_bits // 8
+            else:
+                unit, expected = "bits", size_bits
+            prompt = "What is the minimum file size of the image shown, ignoring any metadata?" + common + " Give your answer in " + unit + "."
+            return QuestionDTO("image_representation", prompt, "integer", expected, grid)
+
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
         # ==========================================
@@ -969,7 +1035,7 @@
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
 
-            # Bit patterns: advanced only; subcategories are equally weighted.
+            # Bit patterns: IP questions are advanced only; image questions are not; subcategories are equally weighted.
             "ip_network_address":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Network address (IP/CIDR)",            "generator": generate_ip_network_address_question},
             "ip_host_id":            {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Host ID (IP/CIDR)",                    "generator": generate_ip_host_id_question},
             "ip_cidr_to_mask":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "CIDR → dotted-decimal mask",           "generator": generate_ip_cidr_to_mask_question},
@@ -978,6 +1044,7 @@
             "ip_min_subnet":         {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Minimum subnet for host requirement",  "generator": generate_ip_min_subnet_question},
             "ip_broadcast_address":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Broadcast address (IP/CIDR)",          "generator": generate_ip_broadcast_question},
             "ip_first_last_host":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "First/last usable host",               "generator": generate_ip_first_last_host_question},
+            "image_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing images (colour depth / file size)", "generator": generate_image_representation_question},
         }
 
         STEER_STRENGTH = 0.5
@@ -1163,6 +1230,21 @@
             prompt_div = document.createElement("div")
             prompt_div.className = "flex-1 text-[17px] font-semibold whitespace-pre-wrap pl-2 leading-relaxed"
             prompt_div.innerText = question_dto.prompt
+
+            if question_dto.grid:
+                grid_rows = question_dto.grid
+                grid_w = len(grid_rows[0])
+                grid_el = document.createElement("div")
+                grid_el.setAttribute("role", "img")
+                grid_el.setAttribute("aria-label", "Image grid, " + str(grid_w) + " columns by " + str(len(grid_rows)) + " rows")
+                grid_el.style.cssText = "display:grid;gap:1px;padding:1px;background:#6b7280;margin-top:0.75rem;width:" + str(grid_w * 34) + "px;max-width:100%;grid-template-columns:repeat(" + str(grid_w) + ",1fr);font-weight:normal"
+                for grid_row in grid_rows:
+                    for colour in grid_row:
+                        cell = document.createElement("div")
+                        cell.setAttribute("data-colour", colour)
+                        cell.style.cssText = "aspect-ratio:1/1;background:" + colour
+                        grid_el.appendChild(cell)
+                prompt_div.appendChild(grid_el)
 
             # Dedicated wrapper for the input field
             input_wrapper = document.createElement("div")
