@@ -169,7 +169,7 @@ def check_images():
         assert q.question_type == IMAGE_TYPE and q.validator_type == "integer"
         grid = q.grid
         h, w = len(grid), len(grid[0])
-        assert 2 <= h <= w <= 8 and all(len(r) == w for r in grid)
+        assert 2 <= h <= w <= 8 and w * h <= 16 and all(len(r) == w for r in grid)
         flat = [c for r in grid for c in r]
         assert set(flat) <= master
         distinct = len(set(flat))

@@ -955,6 +955,7 @@
         ]
         IMAGE_MIN_SIZE = 2
         IMAGE_MAX_SIZE = 8
+        IMAGE_MAX_CELLS = 16
         # Bit depth -> (fewest, most) colours needing that depth; depth = (n - 1).bit_length().
         IMAGE_DEPTH_RANGES = {1: (2, 2), 2: (3, 4), 3: (5, 8), 4: (9, 9)}
         # Pairs that are hard to tell apart. Soft rule: of all C(9, n) palettes of size n, pick
@@ -978,9 +979,9 @@
             return list(random.choice([combo for count, combo in options if count == fewest]))
 
         def generate_image_grid():
-            # Landscape only: height never exceeds width (square grids allowed).
+            # Landscape only (height never exceeds width) and at most IMAGE_MAX_CELLS pixels.
             w = random.randint(IMAGE_MIN_SIZE, IMAGE_MAX_SIZE)
-            h = random.randint(IMAGE_MIN_SIZE, w)
+            h = random.randint(IMAGE_MIN_SIZE, min(w, IMAGE_MAX_CELLS // w))
             cells = w * h
             depths = [d for d, (low, high) in IMAGE_DEPTH_RANGES.items() if low <= cells]
             low, high = IMAGE_DEPTH_RANGES[random.choice(depths)]
