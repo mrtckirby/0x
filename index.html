@@ -896,7 +896,7 @@
                 expression = (expression[0] + " " + op + " " + right[0],
                               apply_operator(expression[1], right[1], op))
 
-            prompt = "Evaluate the boolean expression: " + expression[0] + "\n(Type True or False)"
+            prompt = "Evaluate the boolean expression:\n" + expression[0] + "\n(Type True or False)"
             expected = expression[1]
             return QuestionDTO("operators_boolean", prompt, "boolean", expected)
 

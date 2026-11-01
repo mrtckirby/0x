@@ -26,7 +26,7 @@ const TRANSFER_SPEED_PATTERN = /^A (\d+(?:\.\d+)?)(MB|GB) file transfers in (\d+
 const CAPACITY_HIGHEST_PATTERN = /^What is the highest value that can be represented with (\d+) (bits?|denary digits?)\?$/;
 const CAPACITY_COUNT_PATTERN = /^How many different values can be represented using (\d+) (bits?|denary digits?)\?$/;
 const DIV_MOD_PATTERN = /^Calculate (\d+) (DIV|MOD) (\d+)\.$/;
-const BOOLEAN_PATTERN = /^Evaluate the boolean expression: (.+)\n\(Type True or False\)$/;
+const BOOLEAN_PATTERN = /^Evaluate the boolean expression:\n(.+)\n\(Type True or False\)$/;
 const BITWISE_PATTERN = /^Calculate (NOT )?([01]{4})(?: (AND|OR|XOR) ([01]{4}))?\. Give your answer as a 4-bit binary number\.$/;
 
 function formatBinary(value) {

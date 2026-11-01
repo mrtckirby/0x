@@ -161,7 +161,8 @@ def check_logical_operators():
     logical_operators = set()
     for _ in range(1000):
         q = CONFIG["operators_boolean"]["generator"]()
-        expression = q.prompt.split(": ", 1)[1].split("\n", 1)[0]
+        assert q.prompt.startswith("Evaluate the boolean expression:\n")
+        expression = q.prompt.split(":\n", 1)[1].split("\n", 1)[0]
         comparisons = re.findall(r"\(\d+ [<>=≤≥] \d+\)", expression)
         assert 2 <= len(comparisons) <= 4, expression
         depth = maximum = 0
