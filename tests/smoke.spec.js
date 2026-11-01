@@ -26,7 +26,8 @@ const TRANSFER_SPEED_PATTERN = /^A (\d+(?:\.\d+)?)(MB|GB) file transfers in (\d+
 const CAPACITY_HIGHEST_PATTERN = /^What is the highest value that can be represented with (\d+) (bits?|denary digits?)\?$/;
 const CAPACITY_COUNT_PATTERN = /^How many different values can be represented using (\d+) (bits?|denary digits?)\?$/;
 const DIV_MOD_PATTERN = /^Calculate (\d+) (DIV|MOD) (\d+)\.$/;
-const BOOLEAN_PATTERN = /^Evaluate the boolean expression: (\d+) ([<>=≤≥]{1,2}) (\d+)\n\(Type True or False\)$/;
+const BOOLEAN_PATTERN = /^Evaluate the boolean expression: (.+)\n\(Type True or False\)$/;
+const BITWISE_PATTERN = /^Calculate (NOT )?([01]{4})(?: (AND|OR|XOR) ([01]{4}))?\. Give your answer as a 4-bit binary number\.$/;
 
 function formatBinary(value) {
   return value.toString(2).padStart(8, "0");
@@ -38,6 +39,75 @@ function formatHex(value) {
 
 function formatAnswer(value) {
   return String(value);
+}
+
+function solveBooleanExpression(expression) {
+  const tokens = expression.match(/\d+|<=|>=|==|[<>=≤≥]|AND|OR|XOR|NOT|[()]/g) || [];
+  if (expression.replace(/\s+/g, "") !== tokens.join("")) {
+    throw new Error(`Unsupported boolean expression: ${expression}`);
+  }
+  let index = 0;
+  const peek = () => tokens[index];
+  const take = (expected) => {
+    if (tokens[index] !== expected) throw new Error(`Expected ${expected} in boolean expression`);
+    index += 1;
+  };
+  const parsePrimary = () => {
+    if (peek() === "(") {
+      take("(");
+      const value = parseOr();
+      take(")");
+      return value;
+    }
+    const left = Number(tokens[index++]);
+    const operator = tokens[index++];
+    const right = Number(tokens[index++]);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) {
+      throw new Error(`Invalid comparison in boolean expression: ${expression}`);
+    }
+    if (operator === "<") return left < right;
+    if (operator === ">") return left > right;
+    if (operator === "=" || operator === "==") return left === right;
+    if (operator === "≤" || operator === "<=") return left <= right;
+    if (operator === "≥" || operator === ">=") return left >= right;
+    throw new Error(`Unsupported boolean operator: ${operator}`);
+  };
+  const parseUnary = () => {
+    if (peek() === "NOT") {
+      take("NOT");
+      return !parseUnary();
+    }
+    return parsePrimary();
+  };
+  const parseAnd = () => {
+    let value = parseUnary();
+    while (peek() === "AND") {
+      take("AND");
+      const right = parseUnary();
+      value = value && right;
+    }
+    return value;
+  };
+  const parseXor = () => {
+    let value = parseAnd();
+    while (peek() === "XOR") {
+      take("XOR");
+      value = value !== parseAnd();
+    }
+    return value;
+  };
+  function parseOr() {
+    let value = parseXor();
+    while (peek() === "OR") {
+      take("OR");
+      const right = parseXor();
+      value = value || right;
+    }
+    return value;
+  }
+  const answer = parseOr();
+  if (index !== tokens.length) throw new Error(`Unexpected token in boolean expression: ${tokens[index]}`);
+  return answer ? "True" : "False";
 }
 
 function analyzePrompt(prompt) {
@@ -133,19 +203,21 @@ function analyzePrompt(prompt) {
     return { category: "operators", answer: String(op === "DIV" ? Math.floor(left / right) : left % right) };
   }
 
+  match = trimmed.match(BITWISE_PATTERN);
+  if (match) {
+    const [, not, leftText, op, rightText] = match;
+    const left = parseInt(leftText, 2);
+    const right = rightText ? parseInt(rightText, 2) : 0;
+    const value = not ? (~left & 0b1111) :
+      op === "AND" ? left & right :
+      op === "OR" ? left | right :
+      left ^ right;
+    return { category: "bit_patterns", answer: value.toString(2).padStart(4, "0") };
+  }
+
   match = trimmed.match(BOOLEAN_PATTERN);
   if (match) {
-    const [, leftText, op, rightText] = match;
-    const left = Number(leftText);
-    const right = Number(rightText);
-    const result =
-      op === "<" ? left < right :
-      op === ">" ? left > right :
-      op === "==" || op === "=" ? left === right :
-      op === "≤" ? left <= right :
-      op === "≥" ? left >= right :
-      (() => { throw new Error(`Unsupported boolean operator: ${op}`); })();
-    return { category: "operators", answer: result ? "True" : "False" };
+    return { category: "operators", answer: solveBooleanExpression(match[1]) };
   }
 
   throw new Error(`Unsupported prompt: ${trimmed}`);
