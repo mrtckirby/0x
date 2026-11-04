@@ -454,6 +454,12 @@
                 for c in answer:
                     if c != "0" and c != "1": return False
                 return answer == expected
+
+            elif v_type == "binary_4bit":
+                if len(answer) != 4: return False
+                for c in answer:
+                    if c != "0" and c != "1": return False
+                return answer == expected
                 
             elif v_type == "hex_string":
                 return normalise_hexadecimal(answer) == expected
@@ -461,9 +467,9 @@
             elif v_type == "boolean":
                 ans_lower = answer.lower()
                 if expected == True:
-                    return ans_lower == "true"
+                    return ans_lower == "true" or ans_lower == "1"
                 else:
-                    return ans_lower == "false"
+                    return ans_lower == "false" or ans_lower == "0"
                     
             elif v_type == "real_binary":
                 cleaned_ans = answer.replace(" ", "")
@@ -853,23 +859,63 @@
             return QuestionDTO("operators_div_mod", prompt, "integer", expected)
             
         def generate_boolean_question():
-            op = random.choice(["<", ">", "==", "≤", "≥"])
-            
-            if random.random() < 0.3:
+            def comparison():
+                op = random.choice(["<", ">", "=", "≤", "≥"])
                 a = random.randint(1, 30)
-                b = a
-            else:
-                a = random.randint(1, 30)
-                b = random.randint(1, 30)
-                
-            if op == "<": expected = (a < b)
-            elif op == ">": expected = (a > b)
-            elif op == "==": expected = (a == b)
-            elif op == "≤": expected = (a <= b)
-            elif op == "≥": expected = (a >= b)
-            
-            prompt = "Evaluate the boolean expression: " + str(a) + " " + op + " " + str(b) + "\n(Type True or False)"
+                b = a if random.random() < 0.3 else random.randint(1, 30)
+                if op == "<": result = a < b
+                elif op == ">": result = a > b
+                elif op == "=": result = a == b
+                elif op == "≤": result = a <= b
+                else: result = a >= b
+                return "(" + str(a) + " " + op + " " + str(b) + ")", result
+
+            def apply_operator(left, right, op):
+                if op == "AND": result = left and right
+                elif op == "OR": result = left or right
+                else: result = left != right
+                return result
+
+            comparisons = [comparison() for _ in range(random.randint(2, 4))]
+            for i, (expression, result) in enumerate(comparisons):
+                if random.random() < 0.3:
+                    comparisons[i] = ("NOT " + expression, not result)
+
+            def combine(left, right, op):
+                return "(" + left[0] + " " + op + " " + right[0] + ")", apply_operator(left[1], right[1], op)
+
+            expression = combine(comparisons[0], comparisons[1], random.choice(["AND", "OR", "XOR"]))
+            if len(comparisons) == 3:
+                root = comparisons[2]
+                op = random.choice(["AND", "OR", "XOR"])
+                expression = (expression[0] + " " + op + " " + root[0],
+                              apply_operator(expression[1], root[1], op))
+            elif len(comparisons) == 4:
+                right = combine(comparisons[2], comparisons[3], random.choice(["AND", "OR", "XOR"]))
+                op = random.choice(["AND", "OR", "XOR"])
+                expression = (expression[0] + " " + op + " " + right[0],
+                              apply_operator(expression[1], right[1], op))
+
+            prompt = "Evaluate the boolean expression:\n" + expression[0] + "\n(Type True or False)"
+            expected = expression[1]
             return QuestionDTO("operators_boolean", prompt, "boolean", expected)
+
+        def generate_bitwise_question():
+            op = random.choice(["AND", "OR", "XOR", "NOT"])
+            left = random.randint(0, 15)
+            left_bits = bin(left)[2:].zfill(4)
+            if op == "NOT":
+                expected_value = (~left) & 0b1111
+                prompt = "Calculate NOT " + left_bits + ". Give your answer as a 4-bit binary number."
+            else:
+                right = random.randint(0, 15)
+                right_bits = bin(right)[2:].zfill(4)
+                if op == "AND": expected_value = left & right
+                elif op == "OR": expected_value = left | right
+                else: expected_value = left ^ right
+                prompt = "Calculate " + left_bits + " " + op + " " + right_bits + ". Give your answer as a 4-bit binary number."
+            expected = bin(expected_value)[2:].zfill(4)
+            return QuestionDTO("bitwise_operators", prompt, "binary_4bit", expected)
 
         # Bit patterns (IPv4 addressing). Prefixes /31 and /32 are excluded because their usable-host semantics vary.
         IP_MIN_PREFIX = 8
@@ -1035,7 +1081,7 @@
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
 
-            # Bit patterns: IP questions are advanced only; image questions are not; subcategories are equally weighted.
+            # Bit patterns: IP questions are advanced only; image and bitwise questions are not.
             "ip_network_address":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Network address (IP/CIDR)",            "generator": generate_ip_network_address_question},
             "ip_host_id":            {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Host ID (IP/CIDR)",                    "generator": generate_ip_host_id_question},
             "ip_cidr_to_mask":       {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "CIDR → dotted-decimal mask",           "generator": generate_ip_cidr_to_mask_question},
@@ -1045,6 +1091,7 @@
             "ip_broadcast_address":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Broadcast address (IP/CIDR)",          "generator": generate_ip_broadcast_question},
             "ip_first_last_host":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "First/last usable host",               "generator": generate_ip_first_last_host_question},
             "image_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing images (colour depth / file size)", "generator": generate_image_representation_question},
+            "bitwise_operators":     {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "4-bit bitwise operators", "generator": generate_bitwise_question},
         }
 
         STEER_STRENGTH = 0.5

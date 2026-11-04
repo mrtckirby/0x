@@ -32,11 +32,13 @@ IP_TYPES = {
     "ip_usable_hosts", "ip_min_subnet", "ip_broadcast_address", "ip_first_last_host",
 }
 IMAGE_TYPE = "image_representation"
+BITWISE_TYPE = "bitwise_operators"
 LABELS = [
     "Network address (IP/CIDR)", "Host ID (IP/CIDR)", "CIDR → dotted-decimal mask",
     "Dotted-decimal mask → CIDR", "Usable hosts in subnet", "Minimum subnet for host requirement",
     "Broadcast address (IP/CIDR)", "First/last usable host",
     "Representing images (colour depth / file size)",
+    "4-bit bitwise operators",
 ]
 
 
@@ -56,10 +58,11 @@ def mask(prefix):
 def check_config():
     assert "bit_patterns" in ns["MASTER_CATEGORIES"]
     ip = {k: v for k, v in CONFIG.items() if v["master"] == "bit_patterns"}
-    assert set(ip) == IP_TYPES | {IMAGE_TYPE}
+    assert set(ip) == IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE}
     assert sorted(v["label"] for v in ip.values()) == sorted(LABELS)
-    assert all(v["advanced"] for k, v in ip.items() if k != IMAGE_TYPE)
+    assert all(ip[k]["advanced"] for k in IP_TYPES)
     assert not ip[IMAGE_TYPE]["advanced"]
+    assert not ip[BITWISE_TYPE]["advanced"]
     assert len({v["weight"] for v in ip.values()}) == 1
 
     for advanced in (False, True):
@@ -68,10 +71,10 @@ def check_config():
         for _ in range(3000):
             seen.add(ns["choose_weighted_question_type"]())
         if advanced:
-            assert IP_TYPES | {IMAGE_TYPE} <= seen, (IP_TYPES | {IMAGE_TYPE}) - seen
+            assert IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE} <= seen, (IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE}) - seen
         else:
             assert not (IP_TYPES & seen)
-            assert IMAGE_TYPE in seen
+            assert {IMAGE_TYPE, BITWISE_TYPE} <= seen
     state.advanced_mode = False
 
 
@@ -84,6 +87,127 @@ def check_generators():
             # Never generate /31 or /32 questions.
             assert not re.search(r"/(31|32)\b", p), p
             check_question(q_type, q)
+
+def evaluate_expression(expression):
+    def replace_comparison(match):
+        left, op, right = int(match.group(1)), match.group(2), int(match.group(3))
+        value = {
+            "<": left < right,
+            ">": left > right,
+            "=": left == right,
+            "≤": left <= right,
+            "≥": left >= right,
+        }[op]
+        return "True" if value else "False"
+
+    expression = re.sub(r"\((\d+) ([<>=≤≥]) (\d+)\)", replace_comparison, expression)
+    tokens = re.findall(r"True|False|AND|OR|XOR|NOT|[()]", expression)
+    assert "".join(tokens) == re.sub(r"\s+", "", expression)
+    index = 0
+
+    def parse_primary():
+        nonlocal index
+        if tokens[index] == "(":
+            index += 1
+            value = parse_or()
+            assert tokens[index] == ")"
+            index += 1
+            return value
+        value = tokens[index] == "True"
+        assert tokens[index] in ("True", "False")
+        index += 1
+        return value
+
+    def parse_unary():
+        nonlocal index
+        if tokens[index] == "NOT":
+            index += 1
+            return not parse_unary()
+        return parse_primary()
+
+    def parse_and():
+        nonlocal index
+        value = parse_unary()
+        while index < len(tokens) and tokens[index] == "AND":
+            index += 1
+            right = parse_unary()
+            value = value and right
+        return value
+
+    def parse_xor():
+        nonlocal index
+        value = parse_and()
+        while index < len(tokens) and tokens[index] == "XOR":
+            index += 1
+            right = parse_and()
+            value = value != right
+        return value
+
+    def parse_or():
+        nonlocal index
+        value = parse_xor()
+        while index < len(tokens) and tokens[index] == "OR":
+            index += 1
+            right = parse_xor()
+            value = value or right
+        return value
+
+    result = parse_or()
+    assert index == len(tokens)
+    return result
+
+
+def check_logical_operators():
+    logical_operators = set()
+    for _ in range(1000):
+        q = CONFIG["operators_boolean"]["generator"]()
+        assert q.prompt.startswith("Evaluate the boolean expression:\n")
+        expression = q.prompt.split(":\n", 1)[1].split("\n", 1)[0]
+        comparisons = re.findall(r"\(\d+ [<>=≤≥] \d+\)", expression)
+        assert 2 <= len(comparisons) <= 4, expression
+        depth = maximum = 0
+        for char in expression:
+            if char == "(":
+                depth += 1
+                maximum = max(maximum, depth)
+            elif char == ")":
+                depth -= 1
+                assert depth >= 0
+        assert depth == 0 and maximum <= 2, expression
+        logical_operators.update(re.findall(r"\b(?:AND|OR|XOR|NOT)\b", expression))
+        assert evaluate_expression(expression) == q.expected, expression
+        assert validate("boolean", q.expected, "True" if q.expected else "False")
+        assert validate("boolean", q.expected, "true" if q.expected else "false")
+        assert validate("boolean", q.expected, "1" if q.expected else "0")
+    assert logical_operators == {"AND", "OR", "XOR", "NOT"}, logical_operators
+
+
+def check_bitwise_questions():
+    operations = set()
+    for _ in range(1000):
+        q = CONFIG[BITWISE_TYPE]["generator"]()
+        match = re.fullmatch(
+            r"Calculate (NOT )?([01]{4})(?: (AND|OR|XOR) ([01]{4}))?\. "
+            r"Give your answer as a 4-bit binary number\.",
+            q.prompt,
+        )
+        assert match and q.validator_type == "binary_4bit", q.prompt
+        not_op, left_text, op, right_text = match.groups()
+        left = int(left_text, 2)
+        if not_op:
+            expected = (~left) & 0b1111
+            operations.add("NOT")
+        else:
+            right = int(right_text, 2)
+            expected = {"AND": left & right, "OR": left | right, "XOR": left ^ right}[op]
+            operations.add(op)
+        expected_text = bin(expected)[2:].zfill(4)
+        assert q.expected == expected_text, q.prompt
+        assert validate(q.validator_type, q.expected, expected_text)
+        assert not validate(q.validator_type, q.expected, expected_text[1:])
+        assert not validate(q.validator_type, q.expected, expected_text + "0")
+        assert not validate(q.validator_type, q.expected, "10a0")
+    assert operations == {"AND", "OR", "XOR", "NOT"}, operations
 
 
 def addr_prefix(prompt):
@@ -214,6 +338,6 @@ def check_examples():
     assert validate("cidr_prefix", 20, "/20") and validate("cidr_prefix", 20, "20")
 
 
-for fn in (check_config, check_generators, check_images, check_examples):
+for fn in (check_config, check_generators, check_images, check_examples, check_logical_operators, check_bitwise_questions):
     fn()
 print("ok")

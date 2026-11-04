@@ -15,7 +15,7 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Unit conversion
     - Number of values
     - Operators
-    - Bit patterns (advanced mode): IPv4 addressing and representing images
+    - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
 
 - gently favours topics with lower all-time correct counts when choosing new questions
 - validates answers reactively with no submit button
