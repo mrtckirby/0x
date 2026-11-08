@@ -11,7 +11,7 @@ const backup = {
 };
 
 function file(value) {
-  return { name: "backup.json", mimeType: "application/json", buffer: Buffer.from(value) };
+  return { name: "backup.0xf", mimeType: "application/json", buffer: Buffer.from(value) };
 }
 
 test("backup schema and storage failures are handled", () => {
@@ -28,6 +28,8 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 600 
     await page.locator("#input-lastname").fill("Lovelace");
     await page.locator("#btn-start").click();
     const profile = page.locator("#profile-button");
+    await expect(profile.locator("svg")).toHaveCSS("cursor", "pointer");
+    await expect(page.locator("#label-student")).toHaveCSS("cursor", "pointer");
     await profile.locator("svg").click();
     const modal = page.locator("#settings-modal");
     await expect(modal).toBeVisible();
@@ -68,7 +70,7 @@ test("edit name, download backup, reject invalid files and restore after confirm
   const downloadPromise = page.waitForEvent("download");
   await modal.locator("#btn-save-backup").click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("0x-progress.json");
+  expect(download.suggestedFilename()).toBe("0x-progress.0xf");
   const fs = require("fs");
   const downloaded = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")));
@@ -105,8 +107,11 @@ test("backup can be loaded on startup when localStorage is blocked", async ({ pa
   await page.goto("/");
   await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
   await expect(page.locator("#initial-backup-status")).toContainText("storage is unavailable");
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Load progress from a backup file" }).click();
+  const chooser = await chooserPromise;
   page.once("dialog", dialog => dialog.accept());
-  await page.locator("#initial-backup-file").setInputFiles(file(JSON.stringify(backup)));
+  await chooser.setFiles(file(JSON.stringify(backup)));
   await expect(page.locator("#label-student")).toHaveText("Grace Hopper");
   await expect(page.locator("#backup-status")).toContainText("for this session");
   const downloadPromise = page.waitForEvent("download");

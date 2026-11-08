@@ -180,8 +180,8 @@
                 Include advanced questions
             </label>
 
-            <label for="initial-backup-file" class="text-sm text-blue-700 underline">Load progress from a backup file</label>
-            <input id="initial-backup-file" type="file" accept=".json,application/json" class="text-sm">
+            <button type="button" id="btn-initial-load-backup" class="progress-action text-sm">Load progress from a backup file</button>
+            <input id="initial-backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
             <p id="initial-backup-status" role="status" class="text-sm text-red-700"></p>
             <div class="flex justify-end mt-2">
                 <button id="btn-start" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">Start</button>
@@ -213,7 +213,7 @@
             </div>
             <button type="button" id="btn-save-backup" class="progress-action text-sm">Save progress to file...</button>
             <button type="button" id="btn-load-backup" class="progress-action text-sm">Load progress from file...</button>
-            <input id="backup-file" type="file" accept=".json,application/json" class="hidden">
+            <input id="backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
             <p id="backup-status" role="status" aria-live="polite" class="text-sm"></p>
             <button type="button" id="btn-start-over" class="progress-action progress-action-danger text-sm">Clear progress...</button>
         </div>
@@ -320,7 +320,7 @@
             <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
             
             <div class="ml-auto flex items-center gap-2">
-                <button type="button" id="profile-button" aria-haspopup="dialog" aria-label="Open your progress" class="flex items-center gap-2 text-lg font-bold text-blue-700">
+                <button type="button" id="profile-button" aria-haspopup="dialog" aria-label="Open your progress" class="flex items-center gap-2 text-lg font-bold text-blue-700 cursor-pointer">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 21a8 8 0 0 1 16 0" />
@@ -344,7 +344,7 @@
             const url = URL.createObjectURL(new Blob([text], {type: "application/json"}));
             const link = document.createElement("a");
             link.href = url;
-            link.download = "0x-progress.json";
+            link.download = "0x-progress.0xf";
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -2016,6 +2016,9 @@
         def choose_backup(e):
             document.getElementById("backup-file").click()
 
+        def choose_initial_backup(e):
+            document.getElementById("initial-backup-file").click()
+
         def save_name(e):
             firstname = document.getElementById("settings-firstname").value.strip()
             lastname = document.getElementById("settings-lastname").value.strip()
@@ -2141,6 +2144,7 @@
         document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
         document.getElementById("copy-success-ok").addEventListener("click", hold_proxy(create_proxy(close_copy_success)))
         document.getElementById("btn-load-backup").addEventListener("click", hold_proxy(create_proxy(choose_backup)))
+        document.getElementById("btn-initial-load-backup").addEventListener("click", hold_proxy(create_proxy(choose_initial_backup)))
         document.getElementById("btn-save-name").addEventListener("click", hold_proxy(create_proxy(save_name)))
         document.getElementById("btn-save-backup").addEventListener("click", hold_proxy(create_proxy(save_backup)))
         backup_proxy = hold_proxy(create_proxy(load_backup))

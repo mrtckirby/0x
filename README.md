@@ -60,8 +60,9 @@ for the form before use. The export includes the name entered in 0x, cumulative
 question-type scores and up to 100 recorded usage days. It is not encrypted or
 tamper-proof. See [`EXPORT_FORMAT.md`](EXPORT_FORMAT.md).
 
-The same name menu can save progress to `0x-progress.json` or load a previously
-saved backup. Backups contain the same JSON fields as the browser's
+The same name menu can save progress to `0x-progress.0xf` or load a previously
+saved backup. The `.0xf` file contains JSON in the same format as earlier `.json`
+backups, which can still be loaded. Backups contain the same fields as the browser's
 `cs_maths_state` local storage entry, including the name, settings, complete
 scores and all recorded usage days (not the compact instructor export). Loading
 validates the file (maximum 20 MB) and asks for confirmation before replacing the current data;
