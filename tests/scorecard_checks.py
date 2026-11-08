@@ -60,8 +60,8 @@ ns["document"] = doc
 ns["window"] = types.SimpleNamespace(Date=Date())
 state = ns["state"]
 state.last_active_date = "today"
-state.daily_scores = {"base_conversion": 2, "twos_comp_bin_to_den": 1, "binary_addition": 3}
-state.all_time_scores = {"base_conversion": 7, "twos_comp_bin_to_den": 4, "binary_addition": 8}
+state.daily_scores = {"base_conversion": 2, "number_of_values": 4, "twos_comp_bin_to_den": 1, "binary_addition": 3}
+state.all_time_scores = {"base_conversion": 7, "number_of_values": 6, "twos_comp_bin_to_den": 4, "binary_addition": 8}
 
 
 def rows(category):
@@ -79,6 +79,11 @@ for advanced_mode in (False, True):
                     if config["master"] == category and (advanced_mode or not config["advanced"])}
         actual = [row.attributes["data-question-type"] for row in category_rows]
         assert set(actual) == expected
+        for row in category_rows:
+            button = row.children[0].children[-1]
+            assert button.tag == "button"
+            assert button.attributes["data-focus-type"] == row.attributes["data-question-type"]
+            assert button.attributes["aria-pressed"] == "false"
         advanced_flags = [ns["QUESTION_CONFIG"][key]["advanced"] for key in actual]
         assert advanced_flags == sorted(advanced_flags)
 
@@ -98,12 +103,19 @@ for advanced_mode in (False, True):
 
 headings = [row for row in all_rows if row.className == "category-heading"]
 assert len(headings) == len(ns["MASTER_CATEGORIES"])
-assert [cell.textContent for cell in headings[0].children] == ["Base conversion", "3", "11"]
+assert [cell.textContent for cell in headings[0].children] == ["Base conversion", "7", "17"]
 assert [cell.textContent for cell in headings[1].children] == ["Binary arithmetic", "3", "8"]
 assert len([row for row in all_rows if "data-question-type" in row.attributes]) == len(ns["QUESTION_CONFIG"])
 state.last_active_date = "yesterday"
-assert [cell.textContent for cell in rows("average")[0].children] == ["Base conversion", "0", "11"]
+assert [cell.textContent for cell in rows("average")[0].children] == ["Base conversion", "0", "17"]
 state.advanced_mode = False
 rows("average")
 assert "include advanced scores" in doc.elements["scorecard-scores"].children[0].textContent
+state.focus_question_type = "binary_shift"
+for category in ("binary_arithmetic", "average"):
+    selected = next(row for row in rows(category) if row.attributes.get("data-question-type") == "binary_shift")
+    button = selected.children[0].children[-1]
+    assert button.textContent == "×"
+    assert button.attributes["aria-pressed"] == "true"
+    assert button.attributes["aria-label"] == "Stop focusing on Binary shifts"
 print("ok")

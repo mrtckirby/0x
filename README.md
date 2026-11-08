@@ -10,14 +10,18 @@ site, available [here](https://0x.sunsquashed.uk/).
 
 - prompts for firstname and lastname when the app loads
 - provides programmatically-generated questions on:
-    - Base conversion
+    - Base conversion, including number of values and highest representable value
     - Binary arithmetic
     - Unit conversion
-    - Number of values
     - Operators
     - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
 
 - gently favours topics with lower all-time correct counts when choosing new questions
+- lets students focus on one master category, replacing the current questions;
+  the focus is saved across reloads and can be cleared with the × button
+- scorecards also allow focusing on a single question type; turning off
+  advanced questions while focused on an advanced type returns to its master category
+- respects the advanced questions setting when choosing focused questions
 - validates answers reactively with no submit button
 - supplies a new question at the end of the list when a user answers a
   question correctly
@@ -28,6 +32,8 @@ site, available [here](https://0x.sunsquashed.uk/).
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
+- includes previously saved number-of-values scores in base conversion totals;
+  the average is calculated across the five master categories
 
 This app intentionally avoids server-side features, databases, APIs, and
 filesystem persistence so it remains suitable for browser-only execution.
