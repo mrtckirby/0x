@@ -1319,6 +1319,11 @@
             document.getElementById("scorecard-title").textContent = title
             container = document.getElementById("scorecard-scores")
             container.replaceChildren()
+            if scorecard_category == "average" and not state.advanced_mode:
+                note = document.createElement("p")
+                note.className = "advanced-label"
+                note.textContent = "Category totals include advanced scores, even when advanced questions are hidden."
+                container.appendChild(note)
             table = document.createElement("table")
             header = document.createElement("thead")
             row = document.createElement("tr")
@@ -1340,9 +1345,10 @@
                     scorecard_cell(row, "td", str(sum(today_scores.get(q_type, 0) for q_type in types)), True)
                     scorecard_cell(row, "td", str(sum(state.all_time_scores.get(q_type, 0) for q_type in types)), True)
                     body.appendChild(row)
-                for q_type, config in QUESTION_CONFIG.items():
-                    if config["master"] != master:
-                        continue
+                visible_types = [(q_type, config) for q_type, config in QUESTION_CONFIG.items()
+                                 if config["master"] == master and (state.advanced_mode or not config["advanced"])]
+                visible_types.sort(key=lambda item: item[1]["advanced"])
+                for q_type, config in visible_types:
                     row = document.createElement("tr")
                     row.setAttribute("data-question-type", q_type)
                     label = config.get("label") or QUESTION_LABELS[q_type]
@@ -1602,6 +1608,7 @@
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             document.getElementById("toggle-advanced-top").checked = state.advanced_mode
             save_state()
+            render_scorecard()
 
         def start_session(e):
             fname_input = document.getElementById("input-firstname")

@@ -25,8 +25,8 @@ site, available [here](https://0x.sunsquashed.uk/).
   for today and all time
 - opens a scorecard from each dashboard score, showing today and all-time
   counts by question type; the average scorecard includes all categories
-- includes advanced question types in scorecards even when advanced questions
-  are switched off
+- shows advanced question types after standard types in scorecards only when
+  advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
 
 This app intentionally avoids server-side features, databases, APIs, and

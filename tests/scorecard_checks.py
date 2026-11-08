@@ -67,16 +67,35 @@ state.all_time_scores = {"base_conversion": 7, "twos_comp_bin_to_den": 4, "binar
 def rows(category):
     ns["scorecard_category"] = category
     ns["render_scorecard"]()
-    table = doc.elements["scorecard-scores"].children[0]
+    table = doc.elements["scorecard-scores"].children[-1]
     return table.children[1].children
 
 
-for category in ns["MASTER_CATEGORIES"]:
-    category_rows = rows(category)
-    expected = {key for key, config in ns["QUESTION_CONFIG"].items() if config["master"] == category}
-    assert {row.attributes["data-question-type"] for row in category_rows} == expected
+for advanced_mode in (False, True):
+    state.advanced_mode = advanced_mode
+    for category in ns["MASTER_CATEGORIES"]:
+        category_rows = rows(category)
+        expected = {key for key, config in ns["QUESTION_CONFIG"].items()
+                    if config["master"] == category and (advanced_mode or not config["advanced"])}
+        actual = [row.attributes["data-question-type"] for row in category_rows]
+        assert set(actual) == expected
+        advanced_flags = [ns["QUESTION_CONFIG"][key]["advanced"] for key in actual]
+        assert advanced_flags == sorted(advanced_flags)
 
-all_rows = rows("average")
+    all_rows = rows("average")
+    for index, row in enumerate(all_rows):
+        if row.className != "category-heading":
+            continue
+        category = row.attributes["data-cat"]
+        end = next((i for i in range(index + 1, len(all_rows))
+                    if all_rows[i].className == "category-heading"), len(all_rows))
+        actual = [r.attributes["data-question-type"] for r in all_rows[index + 1:end]]
+        expected = {key for key, config in ns["QUESTION_CONFIG"].items()
+                    if config["master"] == category and (advanced_mode or not config["advanced"])}
+        assert set(actual) == expected
+        advanced_flags = [ns["QUESTION_CONFIG"][key]["advanced"] for key in actual]
+        assert advanced_flags == sorted(advanced_flags)
+
 headings = [row for row in all_rows if row.className == "category-heading"]
 assert len(headings) == len(ns["MASTER_CATEGORIES"])
 assert [cell.textContent for cell in headings[0].children] == ["Base conversion", "3", "11"]
@@ -84,4 +103,7 @@ assert [cell.textContent for cell in headings[1].children] == ["Binary arithmeti
 assert len([row for row in all_rows if "data-question-type" in row.attributes]) == len(ns["QUESTION_CONFIG"])
 state.last_active_date = "yesterday"
 assert [cell.textContent for cell in rows("average")[0].children] == ["Base conversion", "0", "11"]
+state.advanced_mode = False
+rows("average")
+assert "include advanced scores" in doc.elements["scorecard-scores"].children[0].textContent
 print("ok")
