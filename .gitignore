@@ -12,6 +12,8 @@
 !.github/workflows/**
 !README.md
 !EXPORT_FORMAT.md
+!process_forms.py
+!requirements.txt
 !favicon.svg
 !favicon.png
 !LICENSE

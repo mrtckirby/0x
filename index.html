@@ -251,6 +251,7 @@
                 Include advanced questions
             </label>
 
+            <button type="button" id="btn-export" class="text-sm font-semibold text-blue-700 underline hidden">Export my scores...</button>
             <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
             
             <div class="ml-auto flex items-center gap-2">
@@ -263,6 +264,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
+            </div>
+            <div id="export-result" class="max-w-4xl mx-auto w-full px-2 hidden">
+                <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
+                <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
+                <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
             </div>
         </div>
     </div>
@@ -277,6 +283,8 @@
     <script type="py">
         import random
         import json
+        import base64
+        import zlib
         from itertools import combinations
         from pyscript import document, window
         from pyodide.ffi import create_once_callable, create_proxy
@@ -1417,6 +1425,55 @@
             elif state.firstname:
                 refresh_usage_display()
 
+        def build_export(now):
+            checkpoint_usage(now)
+            date = window.Date.new(now)
+            usage_dates = sorted(state.daily_usage_ms)
+            selected = usage_dates[-100:]
+            payload = {
+                "n": [state.firstname, state.lastname],
+                "at": date.toISOString(),
+                "day": local_date_key(now),
+                "s": state.all_time_scores,
+                "d": state.daily_scores if state.last_active_date == date.toDateString() else {},
+                "since": state.usage_tracking_since,
+                "cut": len(usage_dates) > 100,
+                "t": {day: (state.daily_usage_ms[day] + 30000) // 60000 for day in selected},
+            }
+            raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            return "0X1." + base64.urlsafe_b64encode(zlib.compress(raw)).decode("ascii").rstrip("=")
+
+        async def export_scores(e):
+            result = document.getElementById("export-result")
+            status = document.getElementById("export-status")
+            label = document.getElementById("export-text-label")
+            text = document.getElementById("export-text")
+            result.classList.remove("hidden")
+            label.classList.add("hidden")
+            text.classList.add("hidden")
+            text.value = ""
+            if not state.firstname or not state.lastname:
+                status.textContent = "Start a session before exporting."
+                return
+            try:
+                value = build_export(int(window.Date.now()))
+            except Exception as error:
+                status.textContent = "Could not create export: " + str(error)
+                return
+            if len(value) > 4000:
+                status.textContent = ("Export is too long for the 4,000-character Forms limit. "
+                                      "Do not paste it into Forms; copy the full text and use another transfer method.")
+            else:
+                try:
+                    await window.navigator.clipboard.writeText(value)
+                    status.textContent = "Scores copied. Paste them into your instructor's form."
+                    return
+                except Exception:
+                    status.textContent = "Clipboard access failed. Select and copy the full text below."
+            text.value = value
+            label.classList.remove("hidden")
+            text.classList.remove("hidden")
+
         # ==========================================
         # UI / DOM MANIPULATION
         # ==========================================
@@ -1546,9 +1603,11 @@
             if name_display:
                 document.getElementById("label-student").innerText = name_display
                 document.getElementById("btn-start-over").classList.remove("hidden")
+                document.getElementById("btn-export").classList.remove("hidden")
             else:
                 document.getElementById("label-student").innerText = "—"
                 document.getElementById("btn-start-over").classList.add("hidden")
+                document.getElementById("btn-export").classList.add("hidden")
 
             total_all_time = 0
             total_daily = 0
@@ -1835,6 +1894,8 @@
             state.all_time_scores = {}
             state.daily_usage_ms = {}
             state.usage_tracking_since = None
+            document.getElementById("export-result").classList.add("hidden")
+            document.getElementById("export-text").value = ""
             
             document.getElementById("toggle-advanced-top").checked = False
             document.getElementById("toggle-advanced-modal").checked = False
@@ -1862,6 +1923,7 @@
         window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
         window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
+        document.getElementById("btn-export").addEventListener("click", hold_proxy(create_proxy(export_scores)))
         toggle_advanced_proxy = hold_proxy(create_proxy(handle_toggle_advanced))
         document.getElementById("toggle-advanced-top").addEventListener("change", toggle_advanced_proxy)
         document.getElementById("toggle-advanced-modal").addEventListener("change", toggle_advanced_proxy)

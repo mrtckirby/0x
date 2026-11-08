@@ -1,7 +1,6 @@
-# Proposed progress export format, version 1
+# Progress export format, version 1
 
-This is a specification for a future export feature and spreadsheet processor;
-neither is implemented yet. It is designed for one Microsoft Forms text answer
+This format is designed for one Microsoft Forms text answer
 per student, with the answer retained as text in the downloaded workbook. The
 form should also collect any identification or consent required by the
 instructor. The encoded string itself includes the student's name.
@@ -66,7 +65,7 @@ date, not proof of complete history. The data is an approximation, including
 where usage rounds down to zero minutes.
 
 The snapshot must include all known scores, including advanced scores even when
-advanced mode is off. A future exporter must checkpoint the active timer before
+advanced mode is off. The exporter checkpoints the active timer before
 capturing the snapshot. Preserve unrecognised stored question IDs instead of
 silently dropping them. A processor must report such IDs as unmapped, retain
 their counts and not invent a category for them. The category totals below are
@@ -111,9 +110,9 @@ every export fits: names and preserved unknown score IDs are not size-limited.
 Microsoft Forms text answers have been [reported as
 limited to 4,000 characters](https://learn.microsoft.com/en-us/answers/questions/5118644/microsoft-forms-word-limit); verify the actual limit in the intended form and
 tenant before deployment. Excel cells have a separate 32,767-character limit.
-A future exporter must check the configured form limit **before** copying,
-report an over-limit error without truncating or discarding data, and provide an
-alternative transfer method or an explicitly designed multi-field format.
+The exporter uses a 4,000-character limit **before** copying and displays
+over-limit text for transfer outside Forms without truncating it. This fixed
+limit is not a guarantee of compatibility with every form.
 The processor must report invalid or truncated cells with their workbook row.
 
 Encoding is not encryption: anyone with the string can recover the name, scores

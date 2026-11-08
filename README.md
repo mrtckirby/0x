@@ -32,6 +32,7 @@ site, available [here](https://0x.sunsquashed.uk/).
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
+- copies a compact progress export for an instructor using **Export my scores...**
 - displays today's active usage time and stores daily durations locally; time
   counts while the page is visible, up to one minute after the last pointer,
   keyboard, input or scroll interaction. Tracking starts on interaction after
@@ -47,9 +48,46 @@ clock changes and suspended tabs can make the figures approximate. Use one
 app tab at a time: separate tabs share storage but do not coordinate their
 in-memory scores or timers and can overwrite one another.
 
-The proposed compact, shareable progress format is documented in
-[`EXPORT_FORMAT.md`](EXPORT_FORMAT.md). Exporting and spreadsheet processing
-are not implemented yet.
+## Sharing and processing scores
+
+Students can select **Export my scores...** and paste the copied text into the
+instructor's Microsoft Forms long-answer question. If clipboard access fails,
+the page displays the full text for manual copying. If it exceeds 4,000
+characters, the page displays the full text instead and warns not to paste it
+into Forms; use an alternative transfer method. Check the actual answer limit
+for the form before use. The export includes the name entered in 0x, cumulative
+question-type scores and up to 100 recorded usage days. It is not encrypted or
+tamper-proof. See [`EXPORT_FORMAT.md`](EXPORT_FORMAT.md).
+
+For spreadsheet processing, configure the form to record respondents' names
+and email addresses and download its `.xlsx` responses. Install Python and run:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+python process_forms.py responses.xlsx scores.xlsx
+```
+
+By default the active worksheet and the unique column containing `0X1.`
+exports are used. Use `--sheet "Sheet name"` to select another worksheet, or
+`--export-column "Exact question header"` if detection is ambiguous or no
+prefix is present. `--include-daily` adds snapshot-day category and question
+type columns; all-time scores are always included. Each selected response has
+Forms name, email and completion time, the 0x name and snapshot metadata, all
+category totals and question-type counts, and a column per local calendar day
+of usage. Unmapped question types have separate columns and are reported.
+
+Emails are matched case-insensitively; the latest valid submission by Forms
+completion time is used for each email, with the later workbook row breaking
+ties. Invalid later submissions are reported to stderr and an earlier valid
+submission is tried. Rows without a name, email or usable completion time and
+students with no usable submission are reported and skipped. If no submissions
+are usable, no output is written. Dates without recorded usage are zero only
+within that student's covered history; blank cells mean unknown or outside the
+snapshot. The usage truncation column identifies exports that omit older
+recorded days. Output overwrites an existing output file; input and output must
+be different files.
 
 This app intentionally avoids server-side features, databases, APIs, and
 filesystem persistence so it remains suitable for browser-only execution.
