@@ -14,13 +14,14 @@ async function loadScores(page, lastActiveToday = true) {
       lastname: "Lovelace",
       advanced_mode: false,
       last_active_date: today ? new Date().toDateString() : "previous day",
-      daily_scores: { base_conversion: 2, twos_comp_bin_to_den: 1, binary_addition: 3 },
-      all_time_scores: { base_conversion: 7, twos_comp_bin_to_den: 4, binary_addition: 8 },
+      daily_scores: { base_conversion: 2, number_of_values: 4, twos_comp_bin_to_den: 1, binary_addition: 3 },
+      all_time_scores: { base_conversion: 7, number_of_values: 6, twos_comp_bin_to_den: 4, binary_addition: 8 },
     }));
   }, lastActiveToday);
   await page.goto("/");
-  await expect(page.locator("#score-base_conversion-all")).toHaveText("11", { timeout: 120000 });
-  await expect(page.locator("#score-base_conversion-today")).toHaveText(lastActiveToday ? "3" : "0");
+  await expect(page.locator("#score-base_conversion-all")).toHaveText("17", { timeout: 120000 });
+  await expect(page.locator("#score-base_conversion-today")).toHaveText(lastActiveToday ? "7" : "0");
+  await expect(page.locator("#score-avg-all")).toHaveText("5.00");
 }
 
 test("category scorecard shows existing question types and closes from outside or X", async ({ page }) => {
@@ -31,8 +32,9 @@ test("category scorecard shows existing question types and closes from outside o
   await trigger.click();
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("#scorecard-title")).toHaveText("Base conversion");
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(1);
+  await expect(dialog.locator("[data-question-type]")).toHaveCount(2);
   await expect(dialog.locator('[data-question-type="base_conversion"]')).toHaveText(/Base conversion\s+2\s+7/);
+  await expect(dialog.locator('[data-question-type="number_of_values"]')).toHaveText(/Number of values and highest value\s+4\s+6/);
   await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"]')).toHaveCount(0);
   const triggerBox = await trigger.boundingBox();
   const dialogBox = await dialog.boundingBox();
@@ -52,9 +54,9 @@ test("average scorecard contains all categories and their subtotals", async ({ p
   await page.locator('[data-scorecard="average"]').click();
   const dialog = page.locator("#scorecard");
   await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
-  await expect(dialog.locator(".category-heading")).toHaveCount(6);
+  await expect(dialog.locator(".category-heading")).toHaveCount(5);
   await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
-  await expect(dialog.locator('.category-heading[data-cat="base_conversion"]')).toHaveText(/Base conversion\s+3\s+11/);
+  await expect(dialog.locator('.category-heading[data-cat="base_conversion"]')).toHaveText(/Base conversion\s+7\s+17/);
   await expect(dialog.locator('.category-heading[data-cat="binary_arithmetic"]')).toHaveText(/Binary arithmetic\s+3\s+8/);
   await expect(dialog.locator('[data-question-type="ip_host_id"]')).toHaveCount(0);
   await expect(dialog).toContainText("Category totals include advanced scores");

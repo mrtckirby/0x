@@ -4,7 +4,7 @@ const path = require("path");
 
 const categories = [
   "base_conversion", "binary_arithmetic", "unit_conversion",
-  "number_of_values", "operators", "bit_patterns",
+  "operators", "bit_patterns",
 ];
 
 test("focused selection respects category and advanced setting", () => {
@@ -48,30 +48,38 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
   await page.locator('[data-scorecard="operators"]').click();
   await expect(page.locator("#scorecard")).toBeVisible();
   await page.getByRole("button", { name: "Close scorecard" }).click();
-  await page.locator('[data-focus="number_of_values"]').click();
-  await expectCategory(page, "number_of_values");
-  await expect(baseFocus).toHaveText("Focus on Base conversion");
-
   const row = page.locator(".question-row").first();
   const prompt = await row.locator(":scope > div").nth(1).innerText();
-  const match = prompt.match(/(\d+) (bits?|denary digits?)/);
-  const base = match[2].startsWith("denary") ? 10 : 2;
-  const answer = base ** Number(match[1]) - (prompt.startsWith("What is the highest") ? 1 : 0);
+  const capacity = prompt.match(/(\d+) (bits?|denary digits?)/);
+  let answer;
+  if (capacity) {
+    const base = capacity[2].startsWith("denary") ? 10 : 2;
+    answer = String(base ** Number(capacity[1]) - (prompt.startsWith("What is the highest") ? 1 : 0));
+  } else {
+    const conversion = prompt.match(/^Convert ([0-9A-F]+) from (binary|denary|hexadecimal) to (binary|denary|hexadecimal)\.$/);
+    const bases = { binary: 2, denary: 10, hexadecimal: 16 };
+    const value = parseInt(conversion[1], bases[conversion[2]]);
+    answer = value.toString(bases[conversion[3]]).toUpperCase();
+    if (conversion[3] === "binary") answer = answer.padStart(8, "0");
+    if (conversion[3] === "hexadecimal") answer = answer.padStart(2, "0");
+  }
   await row.locator("input").fill(String(answer));
-  await expect(page.locator("#score-number_of_values-today")).toHaveText("1");
+  await expect(page.locator("#score-base_conversion-today")).toHaveText("1");
   // Change focus before the answer animation removes the old row.
-  await baseFocus.click();
-  await expectCategory(page, "base_conversion");
+  const binaryFocus = page.locator('[data-focus="binary_arithmetic"]');
+  await binaryFocus.click();
+  await expectCategory(page, "binary_arithmetic");
+  await expect(baseFocus).toHaveText("Focus on Base conversion");
   await page.waitForTimeout(1600);
-  await expectCategory(page, "base_conversion");
-  await expect(page.locator("#score-number_of_values-today")).toHaveText("1");
+  await expectCategory(page, "binary_arithmetic");
+  await expect(page.locator("#score-base_conversion-today")).toHaveText("1");
 
   await page.reload();
-  await expect(baseFocus).toHaveText("×", { timeout: 120000 });
-  await expectCategory(page, "base_conversion");
-  await expect(page.locator("#score-number_of_values-all")).toHaveText("1");
-  await baseFocus.click();
-  await expect(baseFocus).toHaveText("Focus on Base conversion");
+  await expect(binaryFocus).toHaveText("×", { timeout: 120000 });
+  await expectCategory(page, "binary_arithmetic");
+  await expect(page.locator("#score-base_conversion-all")).toHaveText("1");
+  await binaryFocus.click();
+  await expect(binaryFocus).toHaveText("Focus on Binary arithmetic");
   await expect(page.locator(".score-trigger.focus-muted")).toHaveCount(0);
   await expect(page.locator(".question-row")).toHaveCount(10);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_category)).toBeNull();

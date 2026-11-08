@@ -4,7 +4,6 @@ const MASTER_CATEGORY_IDS = [
   "base_conversion",
   "binary_arithmetic",
   "unit_conversion",
-  "number_of_values",
   "operators",
   "bit_patterns",
 ];
@@ -180,7 +179,7 @@ function analyzePrompt(prompt) {
     const [, countText, label] = match;
     const count = Number(countText);
     return {
-      category: "number_of_values",
+      category: "base_conversion",
       answer: label.startsWith("denary") ? String(10 ** count - 1) : String(2 ** count - 1),
     };
   }
@@ -190,7 +189,7 @@ function analyzePrompt(prompt) {
     const [, countText, label] = match;
     const count = Number(countText);
     return {
-      category: "number_of_values",
+      category: "base_conversion",
       answer: label.startsWith("denary") ? String(10 ** count) : String(2 ** count),
     };
   }

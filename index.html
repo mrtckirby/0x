@@ -174,7 +174,7 @@
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
-            <!-- 6 Master Score Blocks + Average -->
+            <!-- 5 Master Score Blocks + Average -->
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="base_conversion" data-cat="base_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
@@ -204,16 +204,6 @@
                 </span>
             </button>
             <button type="button" data-focus="unit_conversion" class="focus-trigger">Focus on Unit conversion</button>
-            </div>
-            <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="number_of_values" data-cat="number_of_values" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Number of<br>values</span>
-                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
-                    <span id="score-number_of_values-today" class="score-val">0</span>
-                    <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
-                </span>
-            </button>
-            <button type="button" data-focus="number_of_values" class="focus-trigger">Focus on Number of values</button>
             </div>
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="operators" data-cat="operators" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
@@ -316,7 +306,6 @@
             "base_conversion",
             "binary_arithmetic",
             "unit_conversion",
-            "number_of_values",
             "operators",
             "bit_patterns",
         )
@@ -1167,7 +1156,7 @@
             "unit_conversion":       {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_unit_conversion_question},
             "data_transfer":         {"master": "unit_conversion",   "advanced": False, "weight": 1.0, "generator": generate_data_transfer_question},
             
-            "number_of_values":      {"master": "number_of_values",  "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
+            "number_of_values":      {"master": "base_conversion",   "advanced": False, "weight": 1.0, "generator": generate_capacity_question},
 
             "operators_div_mod":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_div_mod_question},
             "operators_boolean":     {"master": "operators",         "advanced": False, "weight": 1.0, "generator": generate_boolean_question},
@@ -1189,7 +1178,6 @@
             "base_conversion": "Base conversion",
             "binary_arithmetic": "Binary arithmetic",
             "unit_conversion": "Unit conversion",
-            "number_of_values": "Number of values",
             "operators": "Operators",
             "bit_patterns": "Bit patterns",
         }
@@ -1285,6 +1273,8 @@
                 state.lastname = data.get("lastname", "")
                 state.advanced_mode = data.get("advanced_mode", False)
                 focus_category = data.get("focus_category")
+                if focus_category == "number_of_values":
+                    focus_category = "base_conversion"
                 state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
                 
                 document.getElementById("toggle-advanced-top").checked = state.advanced_mode
