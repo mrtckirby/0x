@@ -14,6 +14,15 @@ payload = json.loads(re.search(r"```json\n(.*?)\n```", spec, re.S).group(1))
 encoded = re.search(r"```text\n(0X1\.[^\n]+)\n```", spec).group(1)[4:]
 decoded = zlib.decompress(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
 assert json.loads(decoded.decode("utf-8")) == payload
+assert payload["cut"] is False
+assert payload["t"] == {"2026-11-07": 2, "2026-11-08": 1}
+corrupted = bytearray(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+corrupted[-1] ^= 1
+try:
+    zlib.decompress(corrupted)
+    raise AssertionError("corrupted checksum was accepted")
+except zlib.error:
+    pass
 
 source = (root / "index.html").read_text(encoding="utf-8")
 code = re.search(r'<script type="py">(.*?)</script>', source, re.S).group(1)

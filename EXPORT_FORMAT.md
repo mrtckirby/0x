@@ -34,20 +34,36 @@ of recording, not necessarily the instructor's time zone.
 | `n` | Array of two nonempty strings: firstname, lastname, as stored in the app. |
 | `at` | Snapshot time in UTC, RFC 3339, e.g. `2026-11-08T20:00:00Z`. |
 | `day` | Student's local date at snapshot time. |
-| `s` | Object mapping question-type IDs to all-time correct-answer counts. |
-| `d` | Object mapping question-type IDs to correct-answer counts for `day` only. If the stored daily scores are from another day, export an empty object. |
+| `s` | Object mapping question-type IDs to cumulative all-time correct-answer counts, not individual answers or questions. |
+| `d` | Object mapping question-type IDs to cumulative correct-answer counts for `day` only. If the stored daily scores are from another day, export an empty object. |
 | `since` | Local date on which usage tracking first started, or `null` if it has not started. Earlier usage is unknown, not zero. |
-| `t` | Object mapping local dates to active usage durations in **integer milliseconds**. |
+| `cut` | Boolean: true if older recorded usage dates were omitted from `t` due to the 100-date limit. |
+| `t` | Object mapping at most 100 recorded local dates to active usage durations in **whole minutes**. |
 
 Score counts and durations are nonnegative integers no greater than
 9,007,199,254,740,991; booleans are not integers. A missing score ID means zero;
 zero entries may be omitted. For each type, its `d` count must not exceed its
-`s` count. Missing dates in `t` represent no recorded active time since
-tracking began. An empty `t` does not mean that no time was spent before
-tracking was introduced. If `since` is null, `t` must be empty. Tracking uses
-the device clock, so clock or time-zone changes can affect these dates and
-durations, including producing dates earlier than `since`; `since` is the
-first recorded tracking date, not proof of complete history.
+`s` count.
+
+Select the 100 most recent **recorded usage dates**, ordered by calendar date,
+not the last 100 calendar days. Include every selected date, even if its usage
+rounds to zero minutes. Convert each accumulated local-storage duration from
+milliseconds to minutes, rounding to the nearest whole minute with half a
+minute rounded up: `(milliseconds + 30000) // 60000`. Do not round individual
+sessions before summing. The limit applies only to exports; local storage keeps
+the full history in milliseconds. If more than 100 dates exist, `cut` is true
+and only the most recent 100 are exported; otherwise it is false.
+
+Within the period covered by the export, a missing date means zero recorded
+usage. If `cut` is true, the covered period starts at the earliest date in `t`;
+earlier dates are unknown because they may have been omitted, not zero. If
+`cut` is false, coverage starts at `since`, except that dates before `since`
+explicitly present in `t` are also known. If `since` is null, `t` must be empty
+and `cut` must be false. An empty `t` does not mean that no time was spent before
+tracking was introduced. Tracking uses the device clock, so clock or time-zone
+changes can affect dates and durations; `since` is the first recorded tracking
+date, not proof of complete history. The data is an approximation, including
+where usage rounds down to zero minutes.
 
 The snapshot must include all known scores, including advanced scores even when
 advanced mode is off. A future exporter must checkpoint the active timer before
@@ -74,13 +90,13 @@ preserved but must be treated as unmapped by version 1 processors.
 One valid JSON payload is:
 
 ```json
-{"n":["Ada","Lovelace"],"at":"2026-11-08T20:00:00Z","day":"2026-11-08","s":{"base_conversion":7,"binary_addition":3,"number_of_values":2},"d":{"base_conversion":1},"since":"2026-11-07","t":{"2026-11-07":90000,"2026-11-08":60000}}
+{"n":["Ada","Lovelace"],"at":"2026-11-08T20:00:00Z","day":"2026-11-08","s":{"base_conversion":7,"binary_addition":3,"number_of_values":2},"d":{"base_conversion":1},"since":"2026-11-07","cut":false,"t":{"2026-11-07":2,"2026-11-08":1}}
 ```
 
 One valid encoding of it is:
 
 ```text
-0X1.eJxtjsEKgzAQRP9lzhFiCtrm1nuPPVlK2JgUAjYBo4KI_95NTxa67OnN7OxsiNAPXB1B4JYWP1Dv8RSgCRpKqqaq60qe70pqWbZjn6P1R2SUoTdYyt70KS5-zCFxcCtgQ6RxNeRcmL7sJBDnt_WjSS-z0DB7vlU7p_6NqFnJIXKpw8eWP07FfiD6InnEsZZuCtr3D24tQBo
+0X1.eJxtjsEKgzAQRP9lzhFiCrXk1nuPPbWUsJoVAjYBYwQR_71rTxYKe5rZeTMrIuwTV09QuKWZB-oYLwWaYGG0OVd1XenL3Wir93vIn6flxxQpw65oKbPrUpx5zCEJuFFoQ6RxceR9mL7aSSGWd8ujS72baSgsWbMJ9S-iFieHKKMOjY00dkUW9jRkVpj26MG1Rh3nCWT7ALGEQo8
 ```
 
 The all-time category totals are 9, 3, 0, 0, 0 in the table's order; the
@@ -89,9 +105,10 @@ the same payload.
 
 ## Size, privacy and trust
 
-The example is 207 characters. Text is practical for typical progress, but daily
-history grows indefinitely, so this format cannot guarantee every export will
-fit in one Forms response. Microsoft Forms text answers have been [reported as
+The example is 211 characters. Limiting the export to 100 recorded dates
+prevents the usage-history portion growing indefinitely, but does not guarantee
+every export fits: names and preserved unknown score IDs are not size-limited.
+Microsoft Forms text answers have been [reported as
 limited to 4,000 characters](https://learn.microsoft.com/en-us/answers/questions/5118644/microsoft-forms-word-limit); verify the actual limit in the intended form and
 tenant before deployment. Excel cells have a separate 32,767-character limit.
 A future exporter must check the configured form limit **before** copying,
@@ -101,6 +118,8 @@ The processor must report invalid or truncated cells with their workbook row.
 
 Encoding is not encryption: anyone with the string can recover the name, scores
 and usage history. Share it only with the intended instructor, and handle the
-form and workbook accordingly. The zlib checksum detects accidental corruption,
-not deliberate changes; students can modify local storage or forge exports.
+form and workbook accordingly. The zlib stream includes an Adler-32 checksum of
+the uncompressed bytes; the decoder must validate it. It detects most accidental
+copying errors but cannot guarantee detection of every corruption, and does not
+protect against deliberate changes; students can modify local storage or forge exports.
 These results are self-reported and must not be treated as tamper-proof.
