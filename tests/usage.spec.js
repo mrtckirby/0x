@@ -31,6 +31,7 @@ test("usage is displayed and saved in a browser session", async ({ page }) => {
   await page.reload();
   await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
   await expect(page.locator("#time-today")).not.toHaveText("0s");
+  await page.locator("#label-student").click();
   await page.locator("#btn-start-over").click();
   await page.locator("#btn-confirm-reset").click();
   await expect(page.locator("#time-today")).toHaveText("0s");
@@ -53,7 +54,9 @@ test("export copies a snapshot and offers manual copy on clipboard failure", asy
     } });
   });
   await page.goto("/");
-  await expect(page.locator("#btn-export")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
+  await page.locator("#label-student").click();
+  await expect(page.locator("#btn-export")).toBeVisible();
   await page.locator("#btn-export").click();
   await expect(page.locator("#export-status")).toContainText("Scores copied");
   const encoded = await page.evaluate(() => window.exportTest.value);

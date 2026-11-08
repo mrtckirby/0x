@@ -133,7 +133,7 @@
 
     <!-- Modal overlay for Name Input -->
     <div id="name-modal" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] flex flex-col gap-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] max-w-[95vw] max-h-[90vh] overflow-auto flex flex-col gap-4">
             <h2 class="text-xl font-bold">Start your session</h2>
             <p class="text-sm text-gray-600">Enter your name to begin.</p>
             
@@ -154,11 +154,44 @@
                 Include advanced questions
             </label>
 
+            <label for="initial-backup-file" class="text-sm text-blue-700 underline">Load progress from a backup file</label>
+            <input id="initial-backup-file" type="file" accept=".json,application/json" class="text-sm">
+            <p id="initial-backup-status" role="status" class="text-sm text-red-700"></p>
             <div class="flex justify-end mt-2">
                 <button id="btn-start" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">Start</button>
             </div>
         </div>
     </div>
+
+    <dialog id="settings-modal" aria-labelledby="settings-title" class="w-[min(95vw,500px)] max-h-[90vh] overflow-auto rounded-lg p-6 shadow-xl">
+        <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h2 id="settings-title" class="text-xl font-bold">Your progress</h2>
+                <button type="button" id="settings-close" aria-label="Close settings" class="text-2xl">&times;</button>
+            </div>
+            <div>
+                <label for="settings-firstname" class="block text-sm font-semibold">Firstname</label>
+                <input id="settings-firstname" type="text" class="w-full p-2 border border-gray-300 rounded">
+            </div>
+            <div>
+                <label for="settings-lastname" class="block text-sm font-semibold">Lastname</label>
+                <input id="settings-lastname" type="text" class="w-full p-2 border border-gray-300 rounded">
+            </div>
+            <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save name</button>
+            <p id="settings-status" role="status" aria-live="polite" class="text-sm"></p>
+            <button type="button" id="btn-export" class="text-sm text-blue-700 underline text-left">Export my scores...</button>
+            <div id="export-result" class="hidden">
+                <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
+                <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
+                <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
+            </div>
+            <button type="button" id="btn-save-backup" class="text-sm text-blue-700 underline text-left">Save progress to a file</button>
+            <label for="backup-file" class="text-sm text-blue-700 underline">Load progress from a backup file</label>
+            <input id="backup-file" type="file" accept=".json,application/json" class="text-sm">
+            <p id="backup-status" role="status" aria-live="polite" class="text-sm"></p>
+            <button type="button" id="btn-start-over" class="text-sm text-red-700 underline text-left">Clear my progress...</button>
+        </div>
+    </dialog>
 
     <!-- Modal overlay for Start Over Confirmation -->
     <div id="reset-modal" class="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 hidden">
@@ -251,26 +284,16 @@
                 Include advanced questions
             </label>
 
-            <button type="button" id="btn-export" class="text-sm font-semibold text-blue-700 underline hidden">Export my scores...</button>
             <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
             
             <div class="ml-auto flex items-center gap-2">
                 <div>
                     <span class="text-lg">Name:</span>
-                    <span id="label-student" class="text-lg font-bold">—</span>
+                    <button type="button" id="label-student" aria-haspopup="dialog" class="text-lg font-bold text-blue-700 underline">—</button>
                 </div>
-                <button id="btn-start-over" title="Delete my data and progress and start again" class="p-1 text-gray-500 hover:text-red-600 rounded transition hidden focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-            <div id="export-result" class="max-w-4xl mx-auto w-full px-2 hidden">
-                <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
-                <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
-                <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
             </div>
         </div>
+        <p id="storage-warning" role="alert" class="max-w-4xl mx-auto w-full text-sm text-red-700 hidden"></p>
     </div>
 
     <!-- Main Content Area -->
@@ -280,11 +303,24 @@
         </div>
     </div>
 
+    <script>
+        window.downloadProgressBackup = (text) => {
+            const url = URL.createObjectURL(new Blob([text], {type: "application/json"}));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "0x-progress.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+    </script>
     <script type="py">
         import random
         import json
         import base64
         import zlib
+        from datetime import date
         from itertools import combinations
         from pyscript import document, window
         from pyodide.ffi import create_once_callable, create_proxy
@@ -296,6 +332,7 @@
         RELATIVE_TOLERANCE = 0.02
         ABSOLUTE_TOLERANCE = 1e-6
         STATE_KEY = "cs_maths_state"
+        MAX_BACKUP_BYTES = 20 * 1024 * 1024
         
         CALLBACK_PROXIES = []
         QUESTION_CLEANUPS = []
@@ -1264,10 +1301,8 @@
         # ==========================================
         # STATE MANAGEMENT (LocalStorage)
         # ==========================================
-        def save_state():
-            if not state.firstname:
-                return
-            data = {
+        def state_data():
+            return {
                 "firstname": state.firstname,
                 "lastname": state.lastname,
                 "advanced_mode": state.advanced_mode,
@@ -1279,71 +1314,126 @@
                 "daily_usage_ms": state.daily_usage_ms,
                 "usage_tracking_since": state.usage_tracking_since
             }
-            window.localStorage.setItem(STATE_KEY, json.dumps(data))
+        def storage_warning(message):
+            warning = document.getElementById("storage-warning")
+            warning.textContent = message
+            warning.classList.remove("hidden")
+            document.getElementById("initial-backup-status").textContent = message
 
-        def load_state():
-            raw = window.localStorage.getItem(STATE_KEY)
-            if not raw:
+        def save_state():
+            if not state.firstname:
                 return False
-                
             try:
-                data = json.loads(raw)
-                state.firstname = data.get("firstname", "")
-                state.lastname = data.get("lastname", "")
-                state.daily_usage_ms = data.get("daily_usage_ms", {})
-                state.usage_tracking_since = data.get("usage_tracking_since")
-                state.advanced_mode = data.get("advanced_mode", False)
-                focus_category = data.get("focus_category")
-                if focus_category == "number_of_values":
-                    focus_category = "base_conversion"
-                state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
-                focus_type = data.get("focus_question_type")
-                if (isinstance(focus_type, str) and focus_type in QUESTION_CONFIG
-                        and state.focus_category == QUESTION_CONFIG[focus_type]["master"]
-                        and (state.advanced_mode or not QUESTION_CONFIG[focus_type]["advanced"])):
-                    state.focus_question_type = focus_type
-                else:
-                    state.focus_question_type = None
-                
-                document.getElementById("toggle-advanced-top").checked = state.advanced_mode
-                document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
-                
-                today = window.Date.new().toDateString()
-                
-                if "questions" in data:
-                    state.last_active_date = today
-                    state.all_time_scores = {}
-                    state.daily_scores = {}
-                    
-                    for q_data in data["questions"]:
-                        q_type = q_data.get("q_type")
-                        if q_type in LEGACY_TYPE_MAP:
-                            q_type = LEGACY_TYPE_MAP[q_type]
-                        elif q_type == "b":
-                            prompt = q_data.get("prompt", "")
-                            if "shift by" in prompt.lower() or "discarding any remainder" in prompt.lower() or prompt.startswith("Multiply the 8-bit binary number"):
-                                q_type = "binary_shift"
-                            else:
-                                q_type = "binary_addition"
-                                
-                        awarded = q_data.get("awarded")
-                        if awarded:
-                            state.all_time_scores[q_type] = state.all_time_scores.get(q_type, 0) + 1
-                            if awarded == today:
-                                state.daily_scores[q_type] = state.daily_scores.get(q_type, 0) + 1
-                else:
-                    state.last_active_date = data.get("last_active_date", "")
-                    state.daily_scores = data.get("daily_scores", {})
-                    state.all_time_scores = data.get("all_time_scores", {})
-                    
-                    if state.last_active_date != today:
-                        state.last_active_date = today
-                        state.daily_scores = {}
-
-                save_state()
+                window.localStorage.setItem(STATE_KEY, json.dumps(state_data()))
                 return True
             except Exception:
+                storage_warning("Browser storage is unavailable. Progress may be lost on reload; save a backup file from your name menu.")
                 return False
+
+        def validate_backup(data):
+            fields = ("firstname", "lastname", "advanced_mode", "focus_category", "focus_question_type",
+                      "last_active_date", "daily_scores", "all_time_scores", "daily_usage_ms", "usage_tracking_since")
+            if not isinstance(data, dict) or any(key not in data for key in fields):
+                raise ValueError("This file is not a complete 0x progress backup.")
+            if any(not isinstance(data[key], str) or not data[key].strip() for key in ("firstname", "lastname")):
+                raise ValueError("The backup must contain a first and last name.")
+            if type(data["advanced_mode"]) is not bool or not isinstance(data["last_active_date"], str):
+                raise ValueError("Invalid settings or score date in backup.")
+            category, q_type = data["focus_category"], data["focus_question_type"]
+            if category is not None and (not isinstance(category, str) or category not in MASTER_CATEGORIES):
+                raise ValueError("Invalid category focus in backup.")
+            if q_type is not None and (not isinstance(q_type, str) or q_type not in QUESTION_CONFIG
+                    or QUESTION_CONFIG[q_type]["master"] != category
+                    or (QUESTION_CONFIG[q_type]["advanced"] and not data["advanced_mode"])):
+                raise ValueError("Invalid question focus in backup.")
+            for key in ("daily_scores", "all_time_scores", "daily_usage_ms"):
+                values = data[key]
+                if not isinstance(values, dict) or any(not isinstance(name, str) or not name
+                        or type(value) is not int or value < 0 or value > 9007199254740991
+                        for name, value in values.items()):
+                    raise ValueError("Invalid counts in " + key + ".")
+            if any(count > data["all_time_scores"].get(name, 0) for name, count in data["daily_scores"].items()):
+                raise ValueError("Daily scores cannot exceed all-time scores.")
+            since = data["usage_tracking_since"]
+            dates = list(data["daily_usage_ms"])
+            if since is None and dates:
+                raise ValueError("Usage history requires a tracking start date.")
+            if since is not None:
+                dates.append(since)
+            for value in dates:
+                try:
+                    if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+                        raise ValueError()
+                except ValueError:
+                    raise ValueError("Invalid date in usage history.") from None
+            return data
+
+        def restore_state(data):
+            state.firstname = data.get("firstname", "")
+            state.lastname = data.get("lastname", "")
+            state.daily_usage_ms = data.get("daily_usage_ms", {})
+            state.usage_tracking_since = data.get("usage_tracking_since")
+            state.advanced_mode = data.get("advanced_mode", False)
+            focus_category = data.get("focus_category")
+            if focus_category == "number_of_values":
+                focus_category = "base_conversion"
+            state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
+            focus_type = data.get("focus_question_type")
+            if (isinstance(focus_type, str) and focus_type in QUESTION_CONFIG
+                    and state.focus_category == QUESTION_CONFIG[focus_type]["master"]
+                    and (state.advanced_mode or not QUESTION_CONFIG[focus_type]["advanced"])):
+                state.focus_question_type = focus_type
+            else:
+                state.focus_question_type = None
+
+            document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+            document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
+            today = window.Date.new().toDateString()
+            if "questions" in data:
+                state.last_active_date = today
+                state.all_time_scores = {}
+                state.daily_scores = {}
+                for q_data in data["questions"]:
+                    q_type = q_data.get("q_type")
+                    if q_type in LEGACY_TYPE_MAP:
+                        q_type = LEGACY_TYPE_MAP[q_type]
+                    elif q_type == "b":
+                        prompt = q_data.get("prompt", "")
+                        if "shift by" in prompt.lower() or "discarding any remainder" in prompt.lower() or prompt.startswith("Multiply the 8-bit binary number"):
+                            q_type = "binary_shift"
+                        else:
+                            q_type = "binary_addition"
+                    awarded = q_data.get("awarded")
+                    if awarded:
+                        state.all_time_scores[q_type] = state.all_time_scores.get(q_type, 0) + 1
+                        if awarded == today:
+                            state.daily_scores[q_type] = state.daily_scores.get(q_type, 0) + 1
+            else:
+                state.last_active_date = data.get("last_active_date", "")
+                state.daily_scores = data.get("daily_scores", {})
+                state.all_time_scores = data.get("all_time_scores", {})
+                if state.last_active_date != today:
+                    state.last_active_date = today
+                    state.daily_scores = {}
+
+        def load_state():
+            try:
+                raw = window.localStorage.getItem(STATE_KEY)
+            except Exception:
+                storage_warning("Browser storage is unavailable. Progress may be lost on reload; load or save a backup file.")
+                return False
+            if not raw:
+                return False
+            try:
+                data = json.loads(raw)
+                if not isinstance(data, dict):
+                    raise ValueError("Stored progress is not an object")
+                restore_state(data)
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                storage_warning("Saved progress could not be loaded: " + str(error) + ". Load a backup file.")
+                return False
+            save_state()
+            return True
 
         # ==========================================
         # ACTIVE USAGE TIME
@@ -1602,12 +1692,9 @@
             name_display = (state.firstname + " " + state.lastname).strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
-                document.getElementById("btn-start-over").classList.remove("hidden")
-                document.getElementById("btn-export").classList.remove("hidden")
             else:
                 document.getElementById("label-student").innerText = "—"
-                document.getElementById("btn-start-over").classList.add("hidden")
-                document.getElementById("btn-export").classList.add("hidden")
+            document.getElementById("label-student").disabled = not bool(name_display)
 
             total_all_time = 0
             total_daily = 0
@@ -1874,17 +1961,99 @@
                 save_state()
                 usage_interaction(e)
 
+        def open_settings(e):
+            document.getElementById("settings-firstname").value = state.firstname
+            document.getElementById("settings-lastname").value = state.lastname
+            document.getElementById("settings-status").textContent = ""
+            document.getElementById("backup-status").textContent = ""
+            document.getElementById("settings-modal").showModal()
+
+        def close_settings(e):
+            document.getElementById("settings-modal").close()
+
+        def save_name(e):
+            firstname = document.getElementById("settings-firstname").value.strip()
+            lastname = document.getElementById("settings-lastname").value.strip()
+            status = document.getElementById("settings-status")
+            if not firstname or not lastname:
+                status.textContent = "Enter both a firstname and lastname."
+                return
+            state.firstname = firstname
+            state.lastname = lastname
+            persisted = save_state()
+            refresh_dashboard()
+            status.textContent = "Name saved." if persisted else "Name changed for this session; browser storage is unavailable."
+
+        def save_backup(e):
+            status = document.getElementById("backup-status")
+            try:
+                checkpoint_usage(int(window.Date.now()))
+                raw = json.dumps(validate_backup(state_data()), ensure_ascii=False)
+                if len(raw.encode("utf-8")) > MAX_BACKUP_BYTES:
+                    raise ValueError("Progress exceeds the 20 MB backup limit.")
+                window.downloadProgressBackup(raw)
+            except Exception as error:
+                status.textContent = "Could not save backup: " + str(error)
+                return
+            status.textContent = "Backup download started. Keep the file somewhere safe."
+
+        async def load_backup(e):
+            global usage_cursor, last_interaction
+            control = e.target
+            status_id = "initial-backup-status" if control.id == "initial-backup-file" else "backup-status"
+            status = document.getElementById(status_id)
+            if not control.files.length:
+                return
+            file = control.files.item(0)
+            try:
+                if file.size > MAX_BACKUP_BYTES:
+                    raise ValueError("Backup file exceeds the 20 MB limit.")
+                raw = await file.text()
+                data = validate_backup(json.loads(raw))
+            except Exception as error:
+                status.textContent = "Could not load backup: " + str(error)
+                control.value = ""
+                return
+            if not window.confirm("Replace your current name, settings, scores and usage history with this backup? This cannot be undone."):
+                status.textContent = "Backup loading cancelled; current progress was not changed."
+                control.value = ""
+                return
+            usage_cursor = None
+            last_interaction = None
+            restore_state(data)
+            persisted = save_state()
+            replace_questions()
+            refresh_dashboard()
+            refresh_usage_display()
+            document.getElementById("settings-firstname").value = state.firstname
+            document.getElementById("settings-lastname").value = state.lastname
+            document.getElementById("settings-status").textContent = ""
+            document.getElementById("name-modal").classList.add("hidden")
+            document.getElementById("export-result").classList.add("hidden")
+            document.getElementById("export-text").value = ""
+            control.value = ""
+            if status_id == "initial-backup-status":
+                status = document.getElementById("backup-status")
+                open_settings(e)
+            status.textContent = ("Backup loaded." if persisted else
+                                  "Backup loaded for this session, but browser storage is unavailable. Save a backup before leaving.")
+
         def prompt_reset(e):
+            document.getElementById("settings-modal").close()
             document.getElementById("reset-modal").classList.remove("hidden")
 
         def cancel_reset(e):
             document.getElementById("reset-modal").classList.add("hidden")
+            open_settings(e)
 
         def confirm_reset(e):
             global usage_cursor, last_interaction
             usage_cursor = None
             last_interaction = None
-            window.localStorage.removeItem(STATE_KEY)
+            try:
+                window.localStorage.removeItem(STATE_KEY)
+            except Exception:
+                storage_warning("Could not clear browser storage. Old progress may return on reload; clear your browser's site data.")
             state.firstname = ""
             state.lastname = ""
             state.advanced_mode = False
@@ -1923,6 +2092,13 @@
         window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
         window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
+        document.getElementById("label-student").addEventListener("click", hold_proxy(create_proxy(open_settings)))
+        document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
+        document.getElementById("btn-save-name").addEventListener("click", hold_proxy(create_proxy(save_name)))
+        document.getElementById("btn-save-backup").addEventListener("click", hold_proxy(create_proxy(save_backup)))
+        backup_proxy = hold_proxy(create_proxy(load_backup))
+        document.getElementById("backup-file").addEventListener("change", backup_proxy)
+        document.getElementById("initial-backup-file").addEventListener("change", backup_proxy)
         document.getElementById("btn-export").addEventListener("click", hold_proxy(create_proxy(export_scores)))
         toggle_advanced_proxy = hold_proxy(create_proxy(handle_toggle_advanced))
         document.getElementById("toggle-advanced-top").addEventListener("change", toggle_advanced_proxy)

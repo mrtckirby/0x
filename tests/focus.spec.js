@@ -89,6 +89,7 @@ test("start over clears the saved focus", async ({ page }) => {
   await startSession(page);
   await page.locator('[data-focus="operators"]').click();
   await expectCategory(page, "operators");
+  await page.locator("#label-student").click();
   await page.locator("#btn-start-over").click();
   await page.locator("#btn-confirm-reset").click();
   await expect(page.locator("#name-modal")).toBeVisible();

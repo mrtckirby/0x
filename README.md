@@ -32,7 +32,8 @@ site, available [here](https://0x.sunsquashed.uk/).
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
-- copies a compact progress export for an instructor using **Export my scores...**
+- opens a progress menu by clicking the student's name, with name editing,
+  score export, backup save/load and a clear-progress action
 - displays today's active usage time and stores daily durations locally; time
   counts while the page is visible, up to one minute after the last pointer,
   keyboard, input or scroll interaction. Tracking starts on interaction after
@@ -50,7 +51,7 @@ in-memory scores or timers and can overwrite one another.
 
 ## Sharing and processing scores
 
-Students can select **Export my scores...** and paste the copied text into the
+Students can click their name, select **Export my scores...** and paste the copied text into the
 instructor's Microsoft Forms long-answer question. If clipboard access fails,
 the page displays the full text for manual copying. If it exceeds 4,000
 characters, the page displays the full text instead and warns not to paste it
@@ -58,6 +59,16 @@ into Forms; use an alternative transfer method. Check the actual answer limit
 for the form before use. The export includes the name entered in 0x, cumulative
 question-type scores and up to 100 recorded usage days. It is not encrypted or
 tamper-proof. See [`EXPORT_FORMAT.md`](EXPORT_FORMAT.md).
+
+The same name menu can save progress to `0x-progress.json` or load a previously
+saved backup. Backups contain the same JSON fields as the browser's
+`cs_maths_state` local storage entry, including the name, settings, complete
+scores and all recorded usage days (not the compact instructor export). Loading
+validates the file (maximum 20 MB) and asks for confirmation before replacing the current data;
+daily scores from a previous day are reset as on a normal reload. A backup can
+also be loaded from the start screen. If browser storage is blocked, the app
+warns that progress exists only for the current session; save backups regularly
+and load one at the next visit. Backups are not encrypted: store them securely.
 
 For spreadsheet processing, configure the form to record respondents' names
 and email addresses and download its `.xlsx` responses. Install Python and run:
