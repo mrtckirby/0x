@@ -33,8 +33,8 @@ test("category scorecard shows existing question types and closes from outside o
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("#scorecard-title")).toHaveText("Base conversion");
   await expect(dialog.locator("[data-question-type]")).toHaveCount(2);
-  await expect(dialog.locator('[data-question-type="base_conversion"]')).toHaveText(/Base conversion\s+2\s+7/);
-  await expect(dialog.locator('[data-question-type="number_of_values"]')).toHaveText(/Number of values and highest value\s+4\s+6/);
+  await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["2", "7"]);
+  await expect(dialog.locator('[data-question-type="number_of_values"] td')).toHaveText(["4", "6"]);
   await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"]')).toHaveCount(0);
   const triggerBox = await trigger.boundingBox();
   const dialogBox = await dialog.boundingBox();
@@ -82,7 +82,7 @@ test("advanced mode reveals advanced types after standard types in both scorecar
   await page.getByRole("button", { name: "Close scorecard" }).click();
   await page.locator('[data-scorecard="average"]').click();
   await expect(dialog.locator("[data-question-type]")).toHaveCount(24);
-  await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"]')).toHaveText(/advanced\)\s+1\s+4/);
+  await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"] td')).toHaveText(["1", "4"]);
   const bitPatternRows = dialog.locator('.category-heading[data-cat="bit_patterns"] ~ [data-question-type]');
   await expect.poll(() => bitPatternRows.evaluateAll(
     rows => rows.map(row => row.getAttribute("data-question-type"))
@@ -104,7 +104,7 @@ test("mobile scorecard fills screen, scrolls and supports keyboard dismissal", a
   await expect(dialog).toBeVisible();
   const box = await dialog.boundingBox();
   expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 600 });
-  await expect(dialog.locator('[data-question-type="base_conversion"]')).toHaveText(/Base conversion\s+0\s+7/);
+  await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["0", "7"]);
   expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   await expect(page.getByRole("button", { name: "Close scorecard" })).toBeFocused();
   await page.keyboard.press("Escape");

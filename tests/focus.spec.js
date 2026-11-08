@@ -96,3 +96,46 @@ test("start over clears the saved focus", async ({ page }) => {
   await expect(page.locator('[data-focus="operators"]')).toHaveText("Focus on Operators");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("cs_maths_state"))).toBeNull();
 });
+
+test("scorecard focus selects one question type and persists until cleared", async ({ page }) => {
+  await startSession(page);
+  const rows = page.locator("#questions-container .question-row");
+  const dialog = page.locator("#scorecard");
+  const shift = '[data-focus-type="binary_shift"]';
+  await page.locator('[data-scorecard="binary_arithmetic"]').click();
+  await dialog.locator(shift).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(rows).toHaveCount(10);
+  await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_shift"));
+  await expect(page.locator('[data-scorecard="base_conversion"]')).toHaveClass(/focus-muted/);
+  await expect(page.locator('[data-focus="binary_arithmetic"]')).toHaveText("×");
+  await page.reload();
+  await expect(page.locator('[data-focus="binary_arithmetic"]')).toHaveText("×", { timeout: 120000 });
+  await expect(rows).toHaveCount(10);
+  await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_shift"));
+  await page.locator('[data-scorecard="average"]').click();
+  await expect(dialog.locator(shift)).toHaveText("×");
+  await dialog.locator(shift).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".score-trigger.focus-muted")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("cs_maths_state"));
+    return [state.focus_category, state.focus_question_type];
+  })).toEqual([null, null]);
+});
+
+test("turning off advanced mode returns advanced type focus to its master category", async ({ page }) => {
+  await startSession(page);
+  await page.locator("#toggle-advanced-top").check();
+  await page.locator('[data-scorecard="binary_arithmetic"]').click();
+  await page.locator('[data-focus-type="binary_subtraction"]').click();
+  const rows = page.locator("#questions-container .question-row");
+  await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_subtraction"));
+  await page.locator("#toggle-advanced-top").uncheck();
+  await expectCategory(page, "binary_arithmetic");
+  await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).not.toContain("binary_subtraction");
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("cs_maths_state"));
+    return [state.focus_category, state.focus_question_type];
+  })).toEqual(["binary_arithmetic", null]);
+});

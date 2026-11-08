@@ -19,6 +19,8 @@ site, available [here](https://0x.sunsquashed.uk/).
 - gently favours topics with lower all-time correct counts when choosing new questions
 - lets students focus on one master category, replacing the current questions;
   the focus is saved across reloads and can be cleared with the × button
+- scorecards also allow focusing on a single question type; turning off
+  advanced questions while focused on an advanced type returns to its master category
 - respects the advanced questions setting when choosing focused questions
 - validates answers reactively with no submit button
 - supplies a new question at the end of the list when a user answers a

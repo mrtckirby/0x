@@ -79,6 +79,11 @@ for advanced_mode in (False, True):
                     if config["master"] == category and (advanced_mode or not config["advanced"])}
         actual = [row.attributes["data-question-type"] for row in category_rows]
         assert set(actual) == expected
+        for row in category_rows:
+            button = row.children[0].children[-1]
+            assert button.tag == "button"
+            assert button.attributes["data-focus-type"] == row.attributes["data-question-type"]
+            assert button.attributes["aria-pressed"] == "false"
         advanced_flags = [ns["QUESTION_CONFIG"][key]["advanced"] for key in actual]
         assert advanced_flags == sorted(advanced_flags)
 
@@ -106,4 +111,11 @@ assert [cell.textContent for cell in rows("average")[0].children] == ["Base conv
 state.advanced_mode = False
 rows("average")
 assert "include advanced scores" in doc.elements["scorecard-scores"].children[0].textContent
+state.focus_question_type = "binary_shift"
+for category in ("binary_arithmetic", "average"):
+    selected = next(row for row in rows(category) if row.attributes.get("data-question-type") == "binary_shift")
+    button = selected.children[0].children[-1]
+    assert button.textContent == "×"
+    assert button.attributes["aria-pressed"] == "true"
+    assert button.attributes["aria-label"] == "Stop focusing on Binary shifts"
 print("ok")

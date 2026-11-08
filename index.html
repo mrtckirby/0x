@@ -97,6 +97,7 @@
         .scorecard .score-number { text-align: right; white-space: nowrap; }
         .scorecard .category-heading th { padding-top: 1rem; color: var(--cat-text); }
         .scorecard .advanced-label { color: #6b7280; font-size: 0.75rem; }
+        .scorecard .focus-trigger { display: block; margin-top: 0.25rem; }
         @media (min-width: 768px) {
             .scorecard {
                 inset: auto;
@@ -354,6 +355,7 @@
                 self.lastname = ""
                 self.advanced_mode = False
                 self.focus_category = None
+                self.focus_question_type = None
                 self.last_active_date = ""
                 self.daily_scores = {}
                 self.all_time_scores = {}
@@ -803,7 +805,7 @@
                     ans_2 = bits_2 / speed_bps
 
                     prompt = "How long would it take to transfer a " + str(s_val) + s_unit + " file at " + str(sp_val) + sp_unit + "? Give your answer in seconds. (You may use either base-2 or base-10 conventions.)"
-                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                    return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
 
                 s_unit = random.choice(list(size_units.keys()))
                 sp_unit = random.choice(list(speed_units.keys()))
@@ -818,7 +820,7 @@
                 ans_2 = bits_2 / speed_bps
                 
                 prompt = "How long would it take to transfer a " + str(s_val) + s_unit + " file at " + str(sp_val) + sp_unit + "? Give your answer in seconds. (You may use either base-2 or base-10 conventions.)"
-                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
                 
             elif target == "size":
                 for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
@@ -845,7 +847,7 @@
                     ans_2 = total_bits / size_units[target_s_unit]["b2"]
 
                     prompt = "A file takes " + str(t_val) + " seconds to transfer at " + str(sp_val) + sp_unit + ". What is the file size in " + target_s_unit + "? (You may use either base-2 or base-10 conventions.)"
-                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                    return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
 
                 sp_unit = random.choice(list(speed_units.keys()))
                 t_val = random.choice([10, 30, 60, 120, 300, 600])
@@ -859,7 +861,7 @@
                 ans_2 = total_bits / size_units[target_s_unit]["b2"]
                 
                 prompt = "A file takes " + str(t_val) + " seconds to transfer at " + str(sp_val) + sp_unit + ". What is the file size in " + target_s_unit + "? (You may use either base-2 or base-10 conventions.)"
-                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
                 
             else: # speed
                 for _ in range(MAX_NICE_GENERATION_ATTEMPTS):
@@ -886,7 +888,7 @@
                     ans_2 = (bits_2 / t_val) / speed_units[target_sp_unit]
 
                     prompt = "A " + str(s_val) + s_unit + " file transfers in " + str(t_val) + " seconds. What is the average transmission speed in " + target_sp_unit + "? (You may use either base-2 or base-10 conventions for the file size.)"
-                    return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                    return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
 
                 s_unit = random.choice(list(size_units.keys()))
                 t_val = random.choice([10, 30, 60, 120, 300])
@@ -900,7 +902,7 @@
                 ans_2 = (bits_2 / t_val) / speed_units[target_sp_unit]
                 
                 prompt = "A " + str(s_val) + s_unit + " file transfers in " + str(t_val) + " seconds. What is the average transmission speed in " + target_sp_unit + "? (You may use either base-2 or base-10 conventions for the file size.)"
-                return QuestionDTO("unit_conversion", prompt, "number_list", [ans_10, ans_2])
+                return QuestionDTO("data_transfer", prompt, "number_list", [ans_10, ans_2])
 
         def generate_capacity_question():
             is_bits = random.random() < 0.5
@@ -1232,6 +1234,8 @@
                     continue
                 if state.focus_category and config["master"] != state.focus_category:
                     continue
+                if state.focus_question_type and q_type != state.focus_question_type:
+                    continue
                 by_master.setdefault(config["master"], []).append(q_type)
 
             scores = {mc: 0 for mc in MASTER_CATEGORIES}
@@ -1256,6 +1260,7 @@
                 "lastname": state.lastname,
                 "advanced_mode": state.advanced_mode,
                 "focus_category": state.focus_category,
+                "focus_question_type": state.focus_question_type,
                 "last_active_date": state.last_active_date,
                 "daily_scores": state.daily_scores,
                 "all_time_scores": state.all_time_scores
@@ -1276,6 +1281,13 @@
                 if focus_category == "number_of_values":
                     focus_category = "base_conversion"
                 state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
+                focus_type = data.get("focus_question_type")
+                if (isinstance(focus_type, str) and focus_type in QUESTION_CONFIG
+                        and state.focus_category == QUESTION_CONFIG[focus_type]["master"]
+                        and (state.advanced_mode or not QUESTION_CONFIG[focus_type]["advanced"])):
+                    state.focus_question_type = focus_type
+                else:
+                    state.focus_question_type = None
                 
                 document.getElementById("toggle-advanced-top").checked = state.advanced_mode
                 document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
@@ -1377,6 +1389,15 @@
                         advanced.className = "advanced-label"
                         advanced.textContent = " (advanced)"
                         label_cell.appendChild(advanced)
+                    focus_button = document.createElement("button")
+                    focus_button.type = "button"
+                    focus_button.className = "focus-trigger"
+                    focus_button.setAttribute("data-focus-type", q_type)
+                    selected = state.focus_question_type == q_type
+                    focus_button.textContent = "×" if selected else "Focus on " + label
+                    focus_button.setAttribute("aria-label", "Stop focusing on " + label if selected else "Focus on " + label)
+                    focus_button.setAttribute("aria-pressed", "true" if selected else "false")
+                    label_cell.appendChild(focus_button)
                     scorecard_cell(row, "td", str(today_scores.get(q_type, 0)), True)
                     scorecard_cell(row, "td", str(state.all_time_scores.get(q_type, 0)), True)
                     body.appendChild(row)
@@ -1488,6 +1509,7 @@
 
             row = document.createElement("div")
             row.className = "question-row relative flex flex-col md:flex-row md:items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm transition-all duration-300"
+            row.setAttribute("data-question-type", q_type)
 
             bar = document.createElement("div")
             bar.className = "hidden md:block w-2 h-14 rounded-full opacity-80 bg-cat"
@@ -1648,6 +1670,23 @@
         def handle_focus(e):
             category = e.currentTarget.getAttribute("data-focus")
             state.focus_category = None if state.focus_category == category else category
+            state.focus_question_type = None
+            replace_questions()
+            refresh_dashboard()
+            save_state()
+
+        def handle_scorecard_focus(e):
+            button = e.target.closest("[data-focus-type]")
+            if not button:
+                return
+            q_type = button.getAttribute("data-focus-type")
+            if state.focus_question_type == q_type:
+                state.focus_category = None
+                state.focus_question_type = None
+            else:
+                state.focus_category = QUESTION_CONFIG[q_type]["master"]
+                state.focus_question_type = q_type
+            document.getElementById("scorecard").close()
             replace_questions()
             refresh_dashboard()
             save_state()
@@ -1656,6 +1695,10 @@
             state.advanced_mode = e.target.checked
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+            if not state.advanced_mode and state.focus_question_type and QUESTION_CONFIG[state.focus_question_type]["advanced"]:
+                state.focus_question_type = None
+                replace_questions()
+                refresh_dashboard()
             save_state()
             render_scorecard()
 
@@ -1695,6 +1738,7 @@
             state.lastname = ""
             state.advanced_mode = False
             state.focus_category = None
+            state.focus_question_type = None
             state.daily_scores = {}
             state.all_time_scores = {}
             
@@ -1718,6 +1762,7 @@
             trigger.addEventListener("click", focus_proxy)
         document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
         document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
+        document.getElementById("scorecard-scores").addEventListener("click", hold_proxy(create_proxy(handle_scorecard_focus)))
         document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
         window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
         window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))

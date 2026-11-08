@@ -8,7 +8,7 @@ from pathlib import Path
 
 source = (Path(__file__).resolve().parent.parent / "index.html").read_text(encoding="utf-8")
 code = re.search(r'<script type="py">(.*?)</script>', source, re.S).group(1)
-code = code.split("# EVENT LISTENERS & INITIALIZATION")[0].rsplit("# ====", 1)[0]
+code = code.split("# Wire up buttons and toggles")[0]
 pyscript = types.ModuleType("pyscript")
 pyscript.document = pyscript.window = object()
 pyodide = types.ModuleType("pyodide")
@@ -44,6 +44,17 @@ state.focus_category = None
 choices_seen.clear()
 ns["choose_weighted_question_type"]()
 assert set(choices_seen[0]) == set(ns["MASTER_CATEGORIES"])
+
+for q_type, item in config.items():
+    state.advanced_mode = item["advanced"]
+    state.focus_category = item["master"]
+    state.focus_question_type = q_type
+    choices_seen.clear()
+    assert ns["choose_weighted_question_type"]() == q_type
+    assert choices_seen == [[item["master"]], [q_type]]
+    for _ in range(10):
+        assert item["generator"]().question_type == q_type
+state.focus_question_type = None
 
 
 class Storage:
@@ -102,6 +113,24 @@ assert ns["load_state"]()
 assert state.daily_scores == saved["daily_scores"]
 assert state.all_time_scores == saved["all_time_scores"]
 
+focused = dict(saved, focus_category="binary_arithmetic", focus_question_type="binary_shift")
+storage = load_saved(focused)
+assert state.focus_category == "binary_arithmetic"
+assert state.focus_question_type == "binary_shift"
+assert json.loads(storage.data)["focus_question_type"] == "binary_shift"
+assert ns["load_state"]() and state.focus_question_type == "binary_shift"
+
+advanced = dict(focused, focus_question_type="binary_subtraction", advanced_mode=True)
+load_saved(advanced)
+assert state.focus_question_type == "binary_subtraction"
+advanced["advanced_mode"] = False
+load_saved(advanced)
+assert state.focus_category == "binary_arithmetic" and state.focus_question_type is None
+load_saved(dict(focused, focus_question_type="not_a_type"))
+assert state.focus_question_type is None
+load_saved(dict(focused, focus_question_type="number_of_values"))
+assert state.focus_question_type is None
+
 legacy = {
     "firstname": "Ada", "lastname": "Lovelace",
     "questions": [
@@ -121,4 +150,45 @@ saved["last_active_date"] = "yesterday"
 load_saved(saved)
 assert state.daily_scores == {}
 assert state.all_time_scores == saved["all_time_scores"]
+
+events = []
+ns["replace_questions"] = lambda: events.append("replace")
+ns["refresh_dashboard"] = lambda: events.append("refresh")
+ns["render_scorecard"] = lambda: events.append("render")
+ns["save_state"] = lambda: events.append("save")
+ns["document"].elements["scorecard"] = types.SimpleNamespace(close=lambda: events.append("close"))
+
+
+class Button:
+    def __init__(self, value):
+        self.value = value
+
+    def getAttribute(self, name):
+        return self.value
+
+    def closest(self, selector):
+        return self
+
+
+state.advanced_mode = False
+state.focus_category = None
+state.focus_question_type = None
+ns["handle_scorecard_focus"](types.SimpleNamespace(target=Button("binary_shift")))
+assert (state.focus_category, state.focus_question_type) == ("binary_arithmetic", "binary_shift")
+assert events == ["close", "replace", "refresh", "save"]
+events.clear()
+ns["handle_scorecard_focus"](types.SimpleNamespace(target=Button("binary_shift")))
+assert (state.focus_category, state.focus_question_type) == (None, None)
+assert events == ["close", "replace", "refresh", "save"]
+events.clear()
+ns["handle_scorecard_focus"](types.SimpleNamespace(target=Button("binary_shift")))
+ns["handle_focus"](types.SimpleNamespace(currentTarget=Button("base_conversion")))
+assert (state.focus_category, state.focus_question_type) == ("base_conversion", None)
+state.focus_category = "binary_arithmetic"
+state.focus_question_type = "binary_subtraction"
+state.advanced_mode = True
+events.clear()
+ns["handle_toggle_advanced"](types.SimpleNamespace(target=types.SimpleNamespace(checked=False)))
+assert (state.focus_category, state.focus_question_type) == ("binary_arithmetic", None)
+assert events == ["replace", "refresh", "save", "render"]
 print("ok")
