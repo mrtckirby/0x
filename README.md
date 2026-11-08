@@ -51,7 +51,7 @@ in-memory scores or timers and can overwrite one another.
 
 ## Sharing and processing scores
 
-Students can click their name, select **Export my scores...** and paste the copied text into the
+Students can click their name or profile icon, select **Copy progress to clipboard...** and paste the copied text into the
 instructor's Microsoft Forms long-answer question. If clipboard access fails,
 the page displays the full text for manual copying. If it exceeds 4,000
 characters, the page displays the full text instead and warns not to paste it

@@ -72,6 +72,32 @@
         .score-trigger.focus-muted { filter: grayscale(1); opacity: 0.55; }
         .focus-trigger { font-size: 0.7rem; color: #4b5563; text-decoration: underline; cursor: pointer; }
         .focus-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .progress-dialog {
+            position: fixed;
+            inset: 0;
+            margin: auto;
+            width: min(500px, 95vw);
+            max-height: 90vh;
+            overflow: auto;
+            border: 0;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            background: white;
+            color: #111827;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+        }
+        .progress-dialog::backdrop { background: rgba(17, 24, 39, 0.6); }
+        .progress-action {
+            border: 1px solid #9ca3af;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            text-align: left;
+            cursor: pointer;
+        }
+        .progress-action:hover { background: #e5e7eb; }
+        .progress-action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        .progress-action-danger { color: #b91c1c; }
         .scorecard {
             position: fixed;
             inset: 0;
@@ -163,7 +189,7 @@
         </div>
     </div>
 
-    <dialog id="settings-modal" aria-labelledby="settings-title" class="w-[min(95vw,500px)] max-h-[90vh] overflow-auto rounded-lg p-6 shadow-xl">
+    <dialog id="settings-modal" aria-labelledby="settings-title" class="progress-dialog">
         <div class="flex flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 id="settings-title" class="text-xl font-bold">Your progress</h2>
@@ -179,17 +205,24 @@
             </div>
             <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save name</button>
             <p id="settings-status" role="status" aria-live="polite" class="text-sm"></p>
-            <button type="button" id="btn-export" class="text-sm text-blue-700 underline text-left">Export my scores...</button>
+            <button type="button" id="btn-export" class="progress-action text-sm">Copy progress to clipboard...</button>
             <div id="export-result" class="hidden">
                 <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
                 <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
                 <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
             </div>
-            <button type="button" id="btn-save-backup" class="text-sm text-blue-700 underline text-left">Save progress to a file</button>
-            <label for="backup-file" class="text-sm text-blue-700 underline">Load progress from a backup file</label>
-            <input id="backup-file" type="file" accept=".json,application/json" class="text-sm">
+            <button type="button" id="btn-save-backup" class="progress-action text-sm">Save progress to file...</button>
+            <button type="button" id="btn-load-backup" class="progress-action text-sm">Load progress from file...</button>
+            <input id="backup-file" type="file" accept=".json,application/json" class="hidden">
             <p id="backup-status" role="status" aria-live="polite" class="text-sm"></p>
-            <button type="button" id="btn-start-over" class="text-sm text-red-700 underline text-left">Clear my progress...</button>
+            <button type="button" id="btn-start-over" class="progress-action progress-action-danger text-sm">Clear progress...</button>
+        </div>
+    </dialog>
+
+    <dialog id="copy-success-modal" aria-labelledby="copy-success-message" class="progress-dialog">
+        <p id="copy-success-message">Progress copied successfully! Please paste it into your instructor's form.</p>
+        <div class="flex justify-end mt-4">
+            <button type="button" id="copy-success-ok" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">OK</button>
         </div>
     </dialog>
 
@@ -287,10 +320,13 @@
             <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
             
             <div class="ml-auto flex items-center gap-2">
-                <div>
-                    <span class="text-lg">Name:</span>
-                    <button type="button" id="label-student" aria-haspopup="dialog" class="text-lg font-bold text-blue-700 underline">—</button>
-                </div>
+                <button type="button" id="profile-button" aria-haspopup="dialog" aria-label="Open your progress" class="flex items-center gap-2 text-lg font-bold text-blue-700">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 21a8 8 0 0 1 16 0" />
+                    </svg>
+                    <span id="label-student">—</span>
+                </button>
             </div>
         </div>
         <p id="storage-warning" role="alert" class="max-w-4xl mx-auto w-full text-sm text-red-700 hidden"></p>
@@ -1556,10 +1592,13 @@
             else:
                 try:
                     await window.navigator.clipboard.writeText(value)
-                    status.textContent = "Scores copied. Paste them into your instructor's form."
-                    return
                 except Exception:
                     status.textContent = "Clipboard access failed. Select and copy the full text below."
+                else:
+                    status.textContent = ""
+                    result.classList.add("hidden")
+                    document.getElementById("copy-success-modal").showModal()
+                    return
             text.value = value
             label.classList.remove("hidden")
             text.classList.remove("hidden")
@@ -1694,7 +1733,7 @@
                 document.getElementById("label-student").innerText = name_display
             else:
                 document.getElementById("label-student").innerText = "—"
-            document.getElementById("label-student").disabled = not bool(name_display)
+            document.getElementById("profile-button").disabled = not bool(name_display)
 
             total_all_time = 0
             total_daily = 0
@@ -1971,6 +2010,12 @@
         def close_settings(e):
             document.getElementById("settings-modal").close()
 
+        def close_copy_success(e):
+            document.getElementById("copy-success-modal").close()
+
+        def choose_backup(e):
+            document.getElementById("backup-file").click()
+
         def save_name(e):
             firstname = document.getElementById("settings-firstname").value.strip()
             lastname = document.getElementById("settings-lastname").value.strip()
@@ -2092,8 +2137,10 @@
         window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
         window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
-        document.getElementById("label-student").addEventListener("click", hold_proxy(create_proxy(open_settings)))
+        document.getElementById("profile-button").addEventListener("click", hold_proxy(create_proxy(open_settings)))
         document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
+        document.getElementById("copy-success-ok").addEventListener("click", hold_proxy(create_proxy(close_copy_success)))
+        document.getElementById("btn-load-backup").addEventListener("click", hold_proxy(create_proxy(choose_backup)))
         document.getElementById("btn-save-name").addEventListener("click", hold_proxy(create_proxy(save_name)))
         document.getElementById("btn-save-backup").addEventListener("click", hold_proxy(create_proxy(save_backup)))
         backup_proxy = hold_proxy(create_proxy(load_backup))

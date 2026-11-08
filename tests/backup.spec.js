@@ -19,6 +19,39 @@ test("backup schema and storage failures are handled", () => {
   expect(output).toContain("ok");
 });
 
+for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 600 }]) {
+  test(`profile modal is centered and dimmed at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
+    await page.locator("#input-firstname").fill("Ada");
+    await page.locator("#input-lastname").fill("Lovelace");
+    await page.locator("#btn-start").click();
+    const profile = page.locator("#profile-button");
+    await profile.locator("svg").click();
+    const modal = page.locator("#settings-modal");
+    await expect(modal).toBeVisible();
+    const bounds = await modal.boundingBox();
+    expect(Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2)).toBeLessThan(2);
+    expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThan(2);
+    expect(await modal.evaluate(el => getComputedStyle(el, "::backdrop").backgroundColor))
+      .toBe("rgba(17, 24, 39, 0.6)");
+    for (const label of ["Save progress to file...", "Load progress from file...",
+      "Copy progress to clipboard...", "Clear progress..."]) {
+      await expect(modal.getByRole("button", { name: label, exact: true })).toBeVisible();
+    }
+    await modal.locator("#settings-close").click();
+    await page.locator("#label-student").click();
+    await expect(modal).toBeVisible();
+    const chooser = page.waitForEvent("filechooser");
+    await modal.getByRole("button", { name: "Load progress from file..." }).click();
+    expect((await chooser).isMultiple()).toBe(false);
+    await page.keyboard.press("Escape");
+    await expect(modal).not.toBeVisible();
+    await expect(profile).toBeFocused();
+  });
+}
+
 test("edit name, download backup, reject invalid files and restore after confirmation", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
