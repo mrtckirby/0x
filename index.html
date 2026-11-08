@@ -65,6 +65,64 @@
             display: inline-block;
             transition: text-shadow 0.3s ease;
         }
+
+        .score-trigger { cursor: pointer; border-radius: 0.375rem; }
+        .score-trigger:hover { background: #e5e7eb; }
+        .score-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .scorecard {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            margin: 0;
+            border: 0;
+            padding: 1.25rem;
+            background: white;
+            color: #111827;
+            overflow: auto;
+        }
+        .scorecard::backdrop { background: rgba(17, 24, 39, 0.35); }
+        .scorecard-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+        .scorecard h2 { font-size: 1.25rem; font-weight: bold; }
+        .scorecard-close { font-size: 1.75rem; line-height: 1; cursor: pointer; padding: 0.25rem; }
+        .scorecard-close:focus-visible { outline: 2px solid #2563eb; }
+        .scorecard table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-size: 0.875rem; }
+        .scorecard th, .scorecard td { padding: 0.5rem 0.25rem; border-bottom: 1px solid #e5e7eb; }
+        .scorecard th { text-align: left; }
+        .scorecard .score-number { text-align: right; white-space: nowrap; }
+        .scorecard .category-heading th { padding-top: 1rem; color: var(--cat-text); }
+        .scorecard .advanced-label { color: #6b7280; font-size: 0.75rem; }
+        @media (min-width: 768px) {
+            .scorecard {
+                inset: auto;
+                width: min(440px, calc(100vw - 32px));
+                height: auto;
+                max-height: calc(100vh - var(--scorecard-top) - 16px);
+                top: var(--scorecard-top);
+                left: var(--scorecard-left);
+                overflow: visible;
+                padding: 0;
+                border: 1px solid #d1d5db;
+                border-radius: 0.75rem;
+                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+            }
+            .scorecard-wide { width: min(680px, calc(100vw - 32px)); }
+            .scorecard::before {
+                content: "";
+                position: absolute;
+                top: -9px;
+                left: var(--scorecard-arrow);
+                width: 16px;
+                height: 16px;
+                background: white;
+                border-top: 1px solid #d1d5db;
+                border-left: 1px solid #d1d5db;
+                transform: translateX(-50%) rotate(45deg);
+            }
+            .scorecard-content { padding: 1.25rem; max-height: inherit; overflow: auto; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 m-0 p-0 flex flex-col min-h-screen">
@@ -114,57 +172,67 @@
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 6 Master Score Blocks + Average -->
-            <div data-cat="base_conversion" class="flex flex-col items-center min-w-[100px] px-1">
+            <button type="button" data-scorecard="base_conversion" data-cat="base_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-base_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="binary_arithmetic" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="binary_arithmetic" data-cat="binary_arithmetic" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Binary<br>arithmetic</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-binary_arithmetic-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="unit_conversion" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="unit_conversion" data-cat="unit_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Unit<br>conversion</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-unit_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="number_of_values" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="number_of_values" data-cat="number_of_values" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Number of<br>values</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-number_of_values-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="operators" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="operators" data-cat="operators" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Operators</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="bit_patterns" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="bit_patterns" data-cat="bit_patterns" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Bit<br>patterns</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-bit_patterns-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-bit_patterns-all">0</span>)</span>
-                </div>
-            </div>
-            <div data-cat="average" class="flex flex-col items-center min-w-[100px] px-1">
+                </span>
+            </button>
+            <button type="button" data-scorecard="average" data-cat="average" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Average</span>
-                <div class="text-2xl font-bold text-cat flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-avg-today" class="score-val">0.00</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-avg-all">0.00</span>)</span>
-                </div>
-            </div>
+                </button>
+            </span>
         </div>
-        
+
+        <dialog id="scorecard" class="scorecard" aria-labelledby="scorecard-title">
+            <div class="scorecard-content">
+                <div class="scorecard-header">
+                    <h2 id="scorecard-title"></h2>
+                    <button type="button" id="scorecard-close" class="scorecard-close" aria-label="Close scorecard">&times;</button>
+                </div>
+                <div id="scorecard-scores"></div>
+            </div>
+        </dialog>
+
         <div class="flex items-center max-w-4xl mx-auto w-full px-2 gap-4">
             <label class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 cursor-pointer select-none">
                 <input type="checkbox" id="toggle-advanced-top" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
@@ -1094,6 +1162,31 @@
             "bitwise_operators":     {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "4-bit bitwise operators", "generator": generate_bitwise_question},
         }
 
+        MASTER_LABELS = {
+            "base_conversion": "Base conversion",
+            "binary_arithmetic": "Binary arithmetic",
+            "unit_conversion": "Unit conversion",
+            "number_of_values": "Number of values",
+            "operators": "Operators",
+            "bit_patterns": "Bit patterns",
+        }
+        QUESTION_LABELS = {
+            "base_conversion": "Base conversion",
+            "twos_comp_bin_to_den": "Two's complement binary to denary",
+            "twos_comp_den_to_bin": "Denary to two's complement binary",
+            "real_denary_to_bin": "Real denary to binary",
+            "real_bin_to_den": "Real binary to denary",
+            "binary_addition": "Binary addition",
+            "binary_shift": "Binary shifts",
+            "binary_subtraction": "Binary subtraction",
+            "binary_multiplication": "Binary multiplication",
+            "unit_conversion": "Unit conversion",
+            "data_transfer": "Data transfer",
+            "number_of_values": "Number of values and highest value",
+            "operators_div_mod": "DIV and MOD",
+            "operators_boolean": "Boolean expressions",
+        }
+
         STEER_STRENGTH = 0.5
         STEER_MIN = 0.4
         STEER_MAX = 2.5
@@ -1209,6 +1302,105 @@
         # ==========================================
         # UI / DOM MANIPULATION
         # ==========================================
+        scorecard_category = None
+
+        def scorecard_cell(row, tag, text, numeric=False):
+            cell = document.createElement(tag)
+            cell.textContent = text
+            if numeric:
+                cell.className = "score-number"
+            row.appendChild(cell)
+            return cell
+
+        def render_scorecard():
+            if scorecard_category is None:
+                return
+            title = "All scores" if scorecard_category == "average" else MASTER_LABELS[scorecard_category]
+            document.getElementById("scorecard-title").textContent = title
+            container = document.getElementById("scorecard-scores")
+            container.replaceChildren()
+            if scorecard_category == "average" and not state.advanced_mode:
+                note = document.createElement("p")
+                note.className = "advanced-label"
+                note.textContent = "Category totals include advanced scores, even when advanced questions are hidden."
+                container.appendChild(note)
+            table = document.createElement("table")
+            header = document.createElement("thead")
+            row = document.createElement("tr")
+            scorecard_cell(row, "th", "Question type").setAttribute("scope", "col")
+            scorecard_cell(row, "th", "Today", True).setAttribute("scope", "col")
+            scorecard_cell(row, "th", "All time", True).setAttribute("scope", "col")
+            header.appendChild(row)
+            table.appendChild(header)
+            body = document.createElement("tbody")
+            categories = MASTER_CATEGORIES if scorecard_category == "average" else (scorecard_category,)
+            today_scores = state.daily_scores if state.last_active_date == window.Date.new().toDateString() else {}
+            for master in categories:
+                if scorecard_category == "average":
+                    row = document.createElement("tr")
+                    row.className = "category-heading"
+                    row.setAttribute("data-cat", master)
+                    scorecard_cell(row, "th", MASTER_LABELS[master]).setAttribute("scope", "row")
+                    types = [q_type for q_type, config in QUESTION_CONFIG.items() if config["master"] == master]
+                    scorecard_cell(row, "td", str(sum(today_scores.get(q_type, 0) for q_type in types)), True)
+                    scorecard_cell(row, "td", str(sum(state.all_time_scores.get(q_type, 0) for q_type in types)), True)
+                    body.appendChild(row)
+                visible_types = [(q_type, config) for q_type, config in QUESTION_CONFIG.items()
+                                 if config["master"] == master and (state.advanced_mode or not config["advanced"])]
+                visible_types.sort(key=lambda item: item[1]["advanced"])
+                for q_type, config in visible_types:
+                    row = document.createElement("tr")
+                    row.setAttribute("data-question-type", q_type)
+                    label = config.get("label") or QUESTION_LABELS[q_type]
+                    label_cell = scorecard_cell(row, "th", label)
+                    label_cell.setAttribute("scope", "row")
+                    if config["advanced"]:
+                        advanced = document.createElement("span")
+                        advanced.className = "advanced-label"
+                        advanced.textContent = " (advanced)"
+                        label_cell.appendChild(advanced)
+                    scorecard_cell(row, "td", str(today_scores.get(q_type, 0)), True)
+                    scorecard_cell(row, "td", str(state.all_time_scores.get(q_type, 0)), True)
+                    body.appendChild(row)
+            table.appendChild(body)
+            container.appendChild(table)
+
+        def position_scorecard(*args):
+            if scorecard_category is None:
+                return
+            dialog = document.getElementById("scorecard")
+            trigger = document.querySelector('[data-scorecard="' + scorecard_category + '"]')
+            rect = trigger.getBoundingClientRect()
+            width = min(680 if scorecard_category == "average" else 440, window.innerWidth - 32)
+            left = max(16, min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 16))
+            top = max(16, min(rect.bottom + 12, window.innerHeight - 120))
+            dialog.style.setProperty("--scorecard-left", str(left) + "px")
+            dialog.style.setProperty("--scorecard-top", str(top) + "px")
+            dialog.style.setProperty("--scorecard-arrow", str(max(16, min(width - 16, rect.left + rect.width / 2 - left))) + "px")
+
+        def open_scorecard(e):
+            global scorecard_category
+            scorecard_category = e.currentTarget.getAttribute("data-scorecard")
+            dialog = document.getElementById("scorecard")
+            dialog.classList.toggle("scorecard-wide", scorecard_category == "average")
+            render_scorecard()
+            position_scorecard()
+            dialog.showModal()
+            document.getElementById("scorecard-close").focus()
+
+        def close_scorecard(e):
+            document.getElementById("scorecard").close()
+
+        def scorecard_closed(e):
+            global scorecard_category
+            scorecard_category = None
+
+        def scorecard_backdrop_click(e):
+            dialog = document.getElementById("scorecard")
+            rect = dialog.getBoundingClientRect()
+            if e.target.isSameNode(dialog) and (e.clientX < rect.left or e.clientX > rect.right or e.clientY < rect.top or e.clientY > rect.bottom):
+                dialog.close()
+
         def refresh_dashboard():
             all_time_master = {mc: 0 for mc in MASTER_CATEGORIES}
             daily_master = {mc: 0 for mc in MASTER_CATEGORIES}
@@ -1258,6 +1450,7 @@
             avg_el = document.getElementById("score-avg-today")
             if levels["avg"] > 0: avg_el.classList.add("glow-text")
             else: avg_el.classList.remove("glow-text")
+            render_scorecard()
 
         def create_question_element(question_dto):
             q_type = question_dto.question_type
@@ -1415,6 +1608,7 @@
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             document.getElementById("toggle-advanced-top").checked = state.advanced_mode
             save_state()
+            render_scorecard()
 
         def start_session(e):
             fname_input = document.getElementById("input-firstname")
@@ -1467,6 +1661,14 @@
             refresh_dashboard()
 
         # Wire up buttons and toggles
+        scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
+        for trigger in document.querySelectorAll("[data-scorecard]"):
+            trigger.addEventListener("click", scorecard_open_proxy)
+        document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
+        document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
+        document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
+        window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
+        window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
         toggle_advanced_proxy = hold_proxy(create_proxy(handle_toggle_advanced))
         document.getElementById("toggle-advanced-top").addEventListener("change", toggle_advanced_proxy)
