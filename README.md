@@ -18,6 +18,9 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
 
 - gently favours topics with lower all-time correct counts when choosing new questions
+- lets students focus on one master category, replacing the current questions;
+  the focus is saved across reloads and can be cleared with the × button
+- respects the advanced questions setting when choosing focused questions
 - validates answers reactively with no submit button
 - supplies a new question at the end of the list when a user answers a
   question correctly

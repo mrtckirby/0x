@@ -69,6 +69,9 @@
         .score-trigger { cursor: pointer; border-radius: 0.375rem; }
         .score-trigger:hover { background: #e5e7eb; }
         .score-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .score-trigger.focus-muted { filter: grayscale(1); opacity: 0.55; }
+        .focus-trigger { font-size: 0.7rem; color: #4b5563; text-decoration: underline; cursor: pointer; }
+        .focus-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
         .scorecard {
             position: fixed;
             inset: 0;
@@ -172,6 +175,7 @@
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 6 Master Score Blocks + Average -->
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="base_conversion" data-cat="base_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -179,6 +183,9 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="base_conversion" class="focus-trigger">Focus on Base conversion</button>
+            </div>
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="binary_arithmetic" data-cat="binary_arithmetic" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Binary<br>arithmetic</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -186,6 +193,9 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="binary_arithmetic" class="focus-trigger">Focus on Binary arithmetic</button>
+            </div>
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="unit_conversion" data-cat="unit_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Unit<br>conversion</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -193,6 +203,9 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="unit_conversion" class="focus-trigger">Focus on Unit conversion</button>
+            </div>
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="number_of_values" data-cat="number_of_values" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Number of<br>values</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -200,6 +213,9 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-number_of_values-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="number_of_values" class="focus-trigger">Focus on Number of values</button>
+            </div>
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="operators" data-cat="operators" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Operators</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -207,6 +223,9 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="operators" class="focus-trigger">Focus on Operators</button>
+            </div>
+            <div class="flex flex-col items-center">
             <button type="button" data-scorecard="bit_patterns" data-cat="bit_patterns" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Bit<br>patterns</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
@@ -214,13 +233,15 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-bit_patterns-all">0</span>)</span>
                 </span>
             </button>
+            <button type="button" data-focus="bit_patterns" class="focus-trigger">Focus on Bit patterns</button>
+            </div>
             <button type="button" data-scorecard="average" data-cat="average" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Average</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-avg-today" class="score-val">0.00</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-avg-all">0.00</span>)</span>
-                </button>
             </span>
+            </button>
         </div>
 
         <dialog id="scorecard" class="scorecard" aria-labelledby="scorecard-title">
@@ -276,6 +297,7 @@
         STATE_KEY = "cs_maths_state"
         
         CALLBACK_PROXIES = []
+        QUESTION_CLEANUPS = []
         ALLOW_MULTI_COLUMN_CARRIES = False
 
         def hold_proxy(proxy):
@@ -342,6 +364,7 @@
                 self.firstname = ""
                 self.lastname = ""
                 self.advanced_mode = False
+                self.focus_category = None
                 self.last_active_date = ""
                 self.daily_scores = {}
                 self.all_time_scores = {}
@@ -1219,6 +1242,8 @@
             for q_type, config in QUESTION_CONFIG.items():
                 if config["advanced"] and not state.advanced_mode:
                     continue
+                if state.focus_category and config["master"] != state.focus_category:
+                    continue
                 by_master.setdefault(config["master"], []).append(q_type)
 
             scores = {mc: 0 for mc in MASTER_CATEGORIES}
@@ -1242,6 +1267,7 @@
                 "firstname": state.firstname,
                 "lastname": state.lastname,
                 "advanced_mode": state.advanced_mode,
+                "focus_category": state.focus_category,
                 "last_active_date": state.last_active_date,
                 "daily_scores": state.daily_scores,
                 "all_time_scores": state.all_time_scores
@@ -1258,6 +1284,8 @@
                 state.firstname = data.get("firstname", "")
                 state.lastname = data.get("lastname", "")
                 state.advanced_mode = data.get("advanced_mode", False)
+                focus_category = data.get("focus_category")
+                state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
                 
                 document.getElementById("toggle-advanced-top").checked = state.advanced_mode
                 document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
@@ -1432,6 +1460,13 @@
                 
                 document.getElementById("score-" + mc + "-today").innerText = str(daily_master[mc])
                 document.getElementById("score-" + mc + "-all").innerText = str(all_time_master[mc])
+                score_trigger = document.querySelector('[data-scorecard="' + mc + '"]')
+                score_trigger.classList.toggle("focus-muted", bool(state.focus_category and state.focus_category != mc))
+                focus_trigger = document.querySelector('[data-focus="' + mc + '"]')
+                selected = state.focus_category == mc
+                focus_trigger.textContent = "×" if selected else "Focus on " + MASTER_LABELS[mc]
+                focus_trigger.setAttribute("aria-label", "Stop focusing on " + MASTER_LABELS[mc] if selected else "Focus on " + MASTER_LABELS[mc])
+                focus_trigger.setAttribute("aria-pressed", "true" if selected else "false")
 
             if len(MASTER_CATEGORIES) > 0:
                 avg_all_time = total_all_time / len(MASTER_CATEGORIES)
@@ -1458,6 +1493,7 @@
                 
             master = QUESTION_CONFIG[q_type]["master"]
             row_callback_proxies = []
+            row_timeouts = []
             input_listener_proxy = None
 
             row = document.createElement("div")
@@ -1508,6 +1544,9 @@
                 return proxy
 
             def cleanup_row_proxies():
+                for timeout in row_timeouts:
+                    window.clearTimeout(timeout)
+                row_timeouts.clear()
                 try:
                     if input_listener_proxy is not None:
                         input_field.removeEventListener("input", input_listener_proxy)
@@ -1516,6 +1555,10 @@
 
                 while row_callback_proxies:
                     destroy_proxy(row_callback_proxies.pop())
+                if cleanup_row_proxies in QUESTION_CLEANUPS:
+                    QUESTION_CLEANUPS.remove(cleanup_row_proxies)
+
+            QUESTION_CLEANUPS.append(cleanup_row_proxies)
 
             def on_input(e):
                 ans = input_field.value
@@ -1580,11 +1623,11 @@
                     def slide_out_step(*args):
                         try:
                             row.classList.add("row-exit")
-                            window.setTimeout(hold_row_proxy(create_once_callable(remove_and_replace)), 400)
+                            row_timeouts.append(window.setTimeout(hold_row_proxy(create_once_callable(remove_and_replace)), 400))
                         except Exception:
                             cleanup_row_proxies()
 
-                    window.setTimeout(hold_row_proxy(create_once_callable(slide_out_step)), 1000)
+                    row_timeouts.append(window.setTimeout(hold_row_proxy(create_once_callable(slide_out_step)), 1000))
 
             input_listener_proxy = hold_row_proxy(create_proxy(on_input))
             input_field.addEventListener("input", input_listener_proxy)
@@ -1600,9 +1643,25 @@
                 row_el = create_question_element(question_dto)
                 container.append(row_el)
 
+        def clear_questions():
+            for cleanup in QUESTION_CLEANUPS[:]:
+                cleanup()
+            document.getElementById("questions-container").replaceChildren()
+
+        def replace_questions():
+            clear_questions()
+            append_questions(QUESTION_BATCH_SIZE)
+
         # ==========================================
         # EVENT LISTENERS & INITIALIZATION
         # ==========================================
+        def handle_focus(e):
+            category = e.currentTarget.getAttribute("data-focus")
+            state.focus_category = None if state.focus_category == category else category
+            replace_questions()
+            refresh_dashboard()
+            save_state()
+
         def handle_toggle_advanced(e):
             state.advanced_mode = e.target.checked
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
@@ -1630,8 +1689,7 @@
                 state.lastname = lname
                 document.getElementById("name-modal").classList.add("hidden")
                 
-                document.getElementById("questions-container").innerHTML = ""
-                append_questions(QUESTION_BATCH_SIZE)
+                replace_questions()
                 refresh_dashboard()
                 save_state()
 
@@ -1646,13 +1704,14 @@
             state.firstname = ""
             state.lastname = ""
             state.advanced_mode = False
+            state.focus_category = None
             state.daily_scores = {}
             state.all_time_scores = {}
             
             document.getElementById("toggle-advanced-top").checked = False
             document.getElementById("toggle-advanced-modal").checked = False
             
-            document.getElementById("questions-container").innerHTML = ""
+            clear_questions()
             document.getElementById("input-firstname").value = ""
             document.getElementById("input-lastname").value = ""
             
@@ -1664,6 +1723,9 @@
         scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
         for trigger in document.querySelectorAll("[data-scorecard]"):
             trigger.addEventListener("click", scorecard_open_proxy)
+        focus_proxy = hold_proxy(create_proxy(handle_focus))
+        for trigger in document.querySelectorAll("[data-focus]"):
+            trigger.addEventListener("click", focus_proxy)
         document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
         document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
         document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
@@ -1679,8 +1741,7 @@
         document.getElementById("btn-confirm-reset").onclick = hold_proxy(create_proxy(confirm_reset))
 
         if load_state():
-            document.getElementById("questions-container").innerHTML = ""
-            append_questions(QUESTION_BATCH_SIZE)
+            replace_questions()
             refresh_dashboard()
         else:
             document.getElementById("name-modal").classList.remove("hidden")
