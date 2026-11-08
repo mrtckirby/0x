@@ -32,8 +32,24 @@ site, available [here](https://0x.sunsquashed.uk/).
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
+- displays today's active usage time and stores daily durations locally; time
+  counts while the page is visible, up to one minute after the last pointer,
+  keyboard, input or scroll interaction. Tracking starts on interaction after
+  starting or returning to the page, and resumes on interaction after hiding it
+- clears usage history as well as scores when starting over
 - includes previously saved number-of-values scores in base conversion totals;
   the average is calculated across the five master categories
+
+Usage history starts when this feature first records an interaction; earlier
+usage cannot be recovered. Durations are split at the device's local midnight
+and saved periodically and when the page is hidden or closed. Browser shutdowns,
+clock changes and suspended tabs can make the figures approximate. Use one
+app tab at a time: separate tabs share storage but do not coordinate their
+in-memory scores or timers and can overwrite one another.
+
+The proposed compact, shareable progress format is documented in
+[`EXPORT_FORMAT.md`](EXPORT_FORMAT.md). Exporting and spreadsheet processing
+are not implemented yet.
 
 This app intentionally avoids server-side features, databases, APIs, and
 filesystem persistence so it remains suitable for browser-only execution.

@@ -164,7 +164,7 @@
     <div id="reset-modal" class="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] flex flex-col gap-4">
             <h2 class="text-xl font-bold text-red-600">Start Over?</h2>
-            <p class="text-sm text-gray-700">Are you sure you want to start over? All your current questions and scores will be permanently lost.</p>
+            <p class="text-sm text-gray-700">Are you sure you want to start over? All your current questions, scores and recorded usage time will be permanently lost.</p>
             <div class="flex justify-end gap-3 mt-2">
                 <button id="btn-cancel-reset" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded transition">Cancel</button>
                 <button id="btn-confirm-reset" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition">Yes, Start Over</button>
@@ -245,11 +245,13 @@
             </div>
         </dialog>
 
-        <div class="flex items-center max-w-4xl mx-auto w-full px-2 gap-4">
+        <div class="flex flex-wrap items-center max-w-4xl mx-auto w-full px-2 gap-4">
             <label class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 cursor-pointer select-none">
                 <input type="checkbox" id="toggle-advanced-top" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                 Include advanced questions
             </label>
+
+            <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
             
             <div class="ml-auto flex items-center gap-2">
                 <div>
@@ -359,6 +361,8 @@
                 self.last_active_date = ""
                 self.daily_scores = {}
                 self.all_time_scores = {}
+                self.daily_usage_ms = {}
+                self.usage_tracking_since = None
 
         class QuestionDTO:
             def __init__(self, question_type, prompt, validator_type, expected, grid=None):
@@ -1263,7 +1267,9 @@
                 "focus_question_type": state.focus_question_type,
                 "last_active_date": state.last_active_date,
                 "daily_scores": state.daily_scores,
-                "all_time_scores": state.all_time_scores
+                "all_time_scores": state.all_time_scores,
+                "daily_usage_ms": state.daily_usage_ms,
+                "usage_tracking_since": state.usage_tracking_since
             }
             window.localStorage.setItem(STATE_KEY, json.dumps(data))
 
@@ -1276,6 +1282,8 @@
                 data = json.loads(raw)
                 state.firstname = data.get("firstname", "")
                 state.lastname = data.get("lastname", "")
+                state.daily_usage_ms = data.get("daily_usage_ms", {})
+                state.usage_tracking_since = data.get("usage_tracking_since")
                 state.advanced_mode = data.get("advanced_mode", False)
                 focus_category = data.get("focus_category")
                 if focus_category == "number_of_values":
@@ -1328,6 +1336,86 @@
                 return True
             except Exception:
                 return False
+
+        # ==========================================
+        # ACTIVE USAGE TIME
+        # ==========================================
+        IDLE_LIMIT_MS = 60_000
+        usage_cursor = None
+        last_interaction = None
+
+        def local_date_key(timestamp):
+            date = window.Date.new(timestamp)
+            return "%04d-%02d-%02d" % (date.getFullYear(), date.getMonth() + 1, date.getDate())
+
+        def refresh_usage_display():
+            total = state.daily_usage_ms.get(local_date_key(window.Date.now()), 0) // 1000
+            hours, remainder = divmod(total, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            parts = []
+            if hours:
+                parts.append(str(hours) + "h")
+            if hours or minutes:
+                parts.append(str(minutes) + "m")
+            parts.append(str(seconds) + "s")
+            document.getElementById("time-today").textContent = " ".join(parts)
+
+        def checkpoint_usage(now):
+            global usage_cursor, last_interaction
+            if usage_cursor is None or last_interaction is None:
+                return
+            if now < usage_cursor:
+                usage_cursor = now
+                last_interaction = now
+                return
+            end = min(now, last_interaction + IDLE_LIMIT_MS)
+            cursor = usage_cursor
+            changed = cursor < end
+            while cursor < end:
+                date = window.Date.new(cursor)
+                date.setHours(24, 0, 0, 0)
+                boundary = int(date.getTime())
+                segment_end = min(end, boundary)
+                key = local_date_key(cursor)
+                state.daily_usage_ms[key] = state.daily_usage_ms.get(key, 0) + segment_end - cursor
+                cursor = segment_end
+            usage_cursor = now
+            if changed:
+                save_state()
+
+        def usage_interaction(e):
+            global usage_cursor, last_interaction
+            if not state.firstname or document.hidden:
+                return
+            now = int(window.Date.now())
+            if state.usage_tracking_since is None:
+                state.usage_tracking_since = local_date_key(now)
+                save_state()
+            if usage_cursor is None:
+                usage_cursor = now
+            elif now < usage_cursor or now > last_interaction + IDLE_LIMIT_MS:
+                checkpoint_usage(now)
+            last_interaction = now
+
+        def usage_tick(e=None):
+            if state.firstname and not document.hidden:
+                checkpoint_usage(int(window.Date.now()))
+                refresh_usage_display()
+
+        def usage_pause(e):
+            global usage_cursor, last_interaction
+            if usage_cursor is not None:
+                checkpoint_usage(int(window.Date.now()))
+            usage_cursor = None
+            last_interaction = None
+            if state.firstname:
+                refresh_usage_display()
+
+        def usage_visibility(e):
+            if document.hidden:
+                usage_pause(e)
+            elif state.firstname:
+                refresh_usage_display()
 
         # ==========================================
         # UI / DOM MANIPULATION
@@ -1725,6 +1813,7 @@
                 replace_questions()
                 refresh_dashboard()
                 save_state()
+                usage_interaction(e)
 
         def prompt_reset(e):
             document.getElementById("reset-modal").classList.remove("hidden")
@@ -1733,6 +1822,9 @@
             document.getElementById("reset-modal").classList.add("hidden")
 
         def confirm_reset(e):
+            global usage_cursor, last_interaction
+            usage_cursor = None
+            last_interaction = None
             window.localStorage.removeItem(STATE_KEY)
             state.firstname = ""
             state.lastname = ""
@@ -1741,6 +1833,8 @@
             state.focus_question_type = None
             state.daily_scores = {}
             state.all_time_scores = {}
+            state.daily_usage_ms = {}
+            state.usage_tracking_since = None
             
             document.getElementById("toggle-advanced-top").checked = False
             document.getElementById("toggle-advanced-modal").checked = False
@@ -1752,6 +1846,7 @@
             document.getElementById("reset-modal").classList.add("hidden")
             document.getElementById("name-modal").classList.remove("hidden")
             refresh_dashboard()
+            refresh_usage_display()
 
         # Wire up buttons and toggles
         scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
@@ -1780,6 +1875,14 @@
             refresh_dashboard()
         else:
             document.getElementById("name-modal").classList.remove("hidden")
+
+        refresh_usage_display()
+        usage_interaction_proxy = hold_proxy(create_proxy(usage_interaction))
+        for event_name in ("pointerdown", "pointermove", "keydown", "input", "scroll"):
+            document.addEventListener(event_name, usage_interaction_proxy, True)
+        document.addEventListener("visibilitychange", hold_proxy(create_proxy(usage_visibility)))
+        window.addEventListener("pagehide", hold_proxy(create_proxy(usage_pause)))
+        window.setInterval(hold_proxy(create_proxy(usage_tick)), 5000)
 
     </script>
 </body>

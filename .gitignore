@@ -11,6 +11,7 @@
 !.github/workflows/
 !.github/workflows/**
 !README.md
+!EXPORT_FORMAT.md
 !favicon.svg
 !favicon.png
 !LICENSE
