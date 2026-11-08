@@ -60,6 +60,7 @@ test("export copies a snapshot and offers manual copy on clipboard failure", asy
   await page.locator("#btn-export").click();
   const confirmation = page.locator("#copy-success-modal");
   await expect(confirmation).toBeVisible();
+  await expect(page.locator("#settings-modal")).not.toBeVisible();
   await expect(confirmation).toContainText("Progress copied successfully! Please paste it into your instructor's form.");
   const encoded = await page.evaluate(() => window.exportTest.value);
   expect(encoded.startsWith("0X1.")).toBe(true);
@@ -70,7 +71,8 @@ test("export copies a snapshot and offers manual copy on clipboard failure", asy
   expect(snapshot.t["2026-01-01"]).toBe(1);
   await confirmation.getByRole("button", { name: "OK" }).click();
   await expect(confirmation).not.toBeVisible();
-  await expect(page.locator("#settings-modal")).toBeVisible();
+  await expect(page.locator("#settings-modal")).not.toBeVisible();
+  await page.locator("#label-student").click();
   await page.evaluate(() => { window.exportTest.fail = true; });
   await page.locator("#btn-export").click();
   await expect(page.locator("#export-status")).toContainText("Clipboard access failed");

@@ -91,6 +91,7 @@ elements = {key: types.SimpleNamespace(classList=Classes(), value="", textConten
             for key in ("export-result", "export-status", "export-text-label", "export-text")}
 success = []
 elements["copy-success-modal"] = types.SimpleNamespace(showModal=lambda: success.append(True))
+elements["settings-modal"] = types.SimpleNamespace(close=lambda: success.append("closed"))
 ns["window"] = types.SimpleNamespace(
     Date=clock, navigator=types.SimpleNamespace(clipboard=clipboard),
     localStorage=types.SimpleNamespace(setItem=lambda key, value: None),
@@ -131,7 +132,7 @@ state.last_active_date = "yesterday"
 assert decode(ns["build_export"](clock.time))["d"] == {}
 asyncio.run(ns["export_scores"](None))
 assert decode(clipboard.value)["n"] == ["Áda", "Lovelace"]
-assert success == [True]
+assert success == ["closed", True]
 assert elements["export-text"].classList.hidden
 
 clipboard.fail = True
