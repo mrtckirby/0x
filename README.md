@@ -8,7 +8,8 @@ site, available [here](https://0x.sunsquashed.uk/).
 
 ## What it does
 
-- prompts for firstname and lastname when the app loads
+- offers a new session or loading progress from a file on the welcome screen;
+  starting from scratch prompts for firstname, lastname and advanced questions
 - provides programmatically-generated questions on:
     - Base conversion, including number of values and highest representable value
     - Binary arithmetic
@@ -17,9 +18,10 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
 
 - gently favours topics with lower all-time correct counts when choosing new questions
-- lets students focus on one master category, replacing the current questions;
-  the focus is saved across reloads and can be cleared with the × button
-- scorecards also allow focusing on a single question type; turning off
+- the **Focus on** menu groups question types by master category and allows
+  focusing on a category or a single question type, replacing the current
+  questions; selecting the active focus again clears it
+- focus is saved across reloads; turning off
   advanced questions while focused on an advanced type returns to its master category
 - respects the advanced questions setting when choosing focused questions
 - validates answers reactively with no submit button
@@ -32,9 +34,10 @@ site, available [here](https://0x.sunsquashed.uk/).
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
-- opens a progress menu by clicking the student's name, with name editing,
-  score export, backup save/load and a clear-progress action
-- displays today's active usage time and stores daily durations locally; time
+- opens a profile menu by clicking the student's first name, with profile
+  settings, badges, score export, file save/load and a clear-progress action
+- the profile shows active time today and all time and allows editing the name
+  and advanced question setting; daily durations are stored locally. Time
   counts while the page is visible, up to one minute after the last pointer,
   keyboard, input or scroll interaction. Tracking starts on interaction after
   starting or returning to the page, and resumes on interaction after hiding it

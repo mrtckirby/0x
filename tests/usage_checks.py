@@ -77,10 +77,13 @@ class Storage:
 
 clock = Clock()
 storage = Storage()
-display = types.SimpleNamespace(textContent="")
+displays = {
+    name: types.SimpleNamespace(textContent="")
+    for name in ("time-today", "time-all")
+}
 document = types.SimpleNamespace(
     hidden=False,
-    getElementById=lambda name: display if name == "time-today" else types.SimpleNamespace(checked=False),
+    getElementById=lambda name: displays.get(name, types.SimpleNamespace(checked=False)),
 )
 ns["window"] = types.SimpleNamespace(Date=clock, localStorage=storage)
 ns["document"] = document
@@ -95,7 +98,8 @@ assert json.loads(storage.data)["usage_tracking_since"] == "2026-03-28"
 clock.time += 20_000
 ns["usage_tick"]()
 assert state.daily_usage_ms == {"2026-03-28": 10_000, "2026-03-29": 10_000}
-assert display.textContent == "10s"
+assert displays["time-today"].textContent == "10s"
+assert displays["time-all"].textContent == "20s"
 
 # A long idle period contributes only the first minute, even after a delayed tick.
 clock.time += 120_000
@@ -120,7 +124,8 @@ ns["usage_interaction"](None)
 clock.time += 3_000
 ns["usage_pause"](None)
 assert state.daily_usage_ms["2026-03-29"] == 60_000
-assert display.textContent == "1m 0s"
+assert displays["time-today"].textContent == "1m 0s"
+assert displays["time-all"].textContent == "1m 10s"
 
 # Interactions before the idle deadline extend the active interval without
 # losing time between them, including when no periodic tick has fired.
@@ -158,13 +163,36 @@ class Classes:
         pass
 
 
+class MenuElement:
+    def __init__(self):
+        self.children = []
+        self.attributes = {}
+        self.textContent = ""
+        self.type = ""
+
+    def replaceChildren(self):
+        self.children.clear()
+
+    def appendChild(self, child):
+        self.children.append(child)
+
+    def setAttribute(self, name, value):
+        self.attributes[name] = value
+
+
 elements = {}
 def element(name):
     if name not in elements:
-        elements[name] = types.SimpleNamespace(classList=Classes(), checked=False, value="", textContent="")
+        if name == "focus-menu":
+            elements[name] = MenuElement()
+        else:
+            elements[name] = types.SimpleNamespace(
+                classList=Classes(), checked=False, value="", textContent="", focus=lambda: None,
+            )
     return elements[name]
 
 document.getElementById = element
+document.createElement = lambda name: MenuElement()
 ns["clear_questions"] = lambda: None
 ns["refresh_dashboard"] = lambda: None
 ns["usage_interaction"](None)

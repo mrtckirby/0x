@@ -74,6 +74,14 @@ class Classes:
             self.hidden = False
 
 
+class Attributes:
+    def __init__(self):
+        self.values = {}
+
+    def setAttribute(self, name, value):
+        self.values[name] = value
+
+
 class Clipboard:
     def __init__(self):
         self.value = None
@@ -89,6 +97,12 @@ clock = Clock()
 clipboard = Clipboard()
 elements = {key: types.SimpleNamespace(classList=Classes(), value="", textContent="")
             for key in ("export-result", "export-status", "export-text-label", "export-text")}
+elements.update({
+    "focus-menu": types.SimpleNamespace(classList=Classes()),
+    "profile-menu": types.SimpleNamespace(classList=Classes()),
+    "focus-button": Attributes(),
+    "profile-button": Attributes(),
+})
 success = []
 elements["copy-success-modal"] = types.SimpleNamespace(showModal=lambda: success.append(True))
 elements["settings-modal"] = types.SimpleNamespace(close=lambda: success.append("closed"))
@@ -97,6 +111,12 @@ ns["window"] = types.SimpleNamespace(
     localStorage=types.SimpleNamespace(setItem=lambda key, value: None),
 )
 ns["document"] = types.SimpleNamespace(hidden=False, getElementById=lambda name: elements[name])
+def close_menus():
+    for name in ("focus", "profile"):
+        elements[name + "-menu"].classList.add("hidden")
+        elements[name + "-button"].setAttribute("aria-expanded", "false")
+
+ns["close_menus"] = close_menus
 state = ns["state"]
 state.firstname = "Áda"
 state.lastname = "Lovelace"
@@ -132,8 +152,11 @@ state.last_active_date = "yesterday"
 assert decode(ns["build_export"](clock.time))["d"] == {}
 asyncio.run(ns["export_scores"](None))
 assert decode(clipboard.value)["n"] == ["Áda", "Lovelace"]
-assert success == ["closed", True]
+assert success == [True]
 assert elements["export-text"].classList.hidden
+assert elements["focus-menu"].classList.hidden and elements["profile-menu"].classList.hidden
+assert elements["focus-button"].values["aria-expanded"] == "false"
+assert elements["profile-button"].values["aria-expanded"] == "false"
 
 clipboard.fail = True
 asyncio.run(ns["export_scores"](None))

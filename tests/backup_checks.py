@@ -50,6 +50,10 @@ class Classes:
 
 elements = {key: types.SimpleNamespace(textContent="", classList=Classes())
             for key in ("storage-warning", "initial-backup-status")}
+elements.update({
+    "toggle-advanced-profile": types.SimpleNamespace(checked=False),
+    "toggle-advanced-modal": types.SimpleNamespace(checked=False),
+})
 ns["document"] = types.SimpleNamespace(getElementById=lambda name: elements[name])
 
 

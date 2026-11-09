@@ -1,6 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
 const path = require("path");
+const { startScratchSession, openProfileMenu } = require("./ui-helpers");
 
 async function answerFirstBaseConversion(page) {
   const question = page.locator(".question-row").first();
@@ -31,7 +32,7 @@ test("available portraits load on their earned badges and remain compact", async
     }));
   });
   await page.goto("/");
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Ada", { timeout: 120000 });
   const portraits = {
     ada: "lovelace", hopper: "hopper", hamilton: "hamilton", knuth: "knuth", turing: "turing",
     shannon: "shannon", johnson: "johnson", boole: "boole", jones: "sparckjones", dijkstra: "dijkstra",
@@ -47,8 +48,7 @@ test("available portraits load on their earned badges and remain compact", async
     expect(bounds.height).toBe(112);
     expect((await card.boundingBox()).width).toBe(175);
   }
-  await page.locator("#profile-button").click();
-  await page.locator("#btn-badges").click();
+  await (await openProfileMenu(page)).locator("#btn-badges").click();
   for (const [id, file] of Object.entries(portraits)) {
     const image = page.locator(`#badge-collection [data-badge="${id}"] img`);
     await expect(image).toHaveAttribute("src", `./badge-images/${file}.png`);
@@ -69,7 +69,7 @@ test("earned badges, collection, details and responsive layout", async ({ page }
     }));
   });
   await page.goto("/");
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Ada", { timeout: 120000 });
   const engagement = page.locator("#engagement-badges");
   const achievement = page.locator("#achievement-badges");
   await expect(engagement.getByRole("button", { name: /Ada Lovelace/ })).toBeVisible();
@@ -94,8 +94,7 @@ test("earned badges, collection, details and responsive layout", async ({ page }
   await expect(engagement).toBeHidden();
   await expect(achievement).toBeHidden();
   await expect(page.locator("#questions-container")).toBeVisible();
-  await page.locator("#profile-button").click();
-  await page.locator("#btn-badges").click();
+  await (await openProfileMenu(page)).locator("#btn-badges").click();
   const collection = page.locator("#badges-modal");
   await expect(collection).toBeVisible();
   await expect(collection).toContainText("Grace Hopper · Keep Iterating (locked)");
@@ -119,7 +118,7 @@ test("a badge notification can be dismissed before its timeout", async ({ page }
     }));
   });
   await page.goto("/");
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Ada", { timeout: 120000 });
   await answerFirstBaseConversion(page);
   await expect(page.locator("#badge-notice")).toBeVisible();
   await page.locator("#badge-notice-close").click();
@@ -130,12 +129,8 @@ test("a badge notification can be dismissed before its timeout", async ({ page }
 
 test("restored and cleared progress updates badges without celebrating old awards", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
-  await page.locator("#input-firstname").fill("Test");
-  await page.locator("#input-lastname").fill("Learner");
-  await page.locator("#btn-start").click();
-  await page.locator("#profile-button").click();
+  await startScratchSession(page, "Test", "Learner");
+  await openProfileMenu(page);
   const backup = {
     firstname: "Ada", lastname: "Lovelace", last_active_date: new Date().toDateString(),
     advanced_mode: false, focus_category: null, focus_question_type: null,
@@ -152,8 +147,7 @@ test("restored and cleared progress updates badges without celebrating old award
   await page.reload();
   await expect(page.locator('#achievement-badges [data-badge="turing"]')).toBeVisible({ timeout: 120000 });
   await expect(page.locator(".new-badge")).toHaveCount(0);
-  await page.locator("#profile-button").click();
-  await page.locator("#btn-start-over").click();
+  await (await openProfileMenu(page)).locator("#btn-start-over").click();
   await page.locator("#btn-confirm-reset").click();
   await expect(page.locator("#engagement-badges button, #achievement-badges button")).toHaveCount(0);
 });

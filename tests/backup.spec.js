@@ -1,6 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
 const path = require("path");
+const { startScratchSession, openProfileMenu, openSettings } = require("./ui-helpers");
 
 const backup = {
   firstname: "Grace", lastname: "Hopper", advanced_mode: true,
@@ -22,15 +23,18 @@ test("backup schema and storage failures are handled", () => {
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 600 }]) {
   test(`profile modal is centered and dimmed at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto("/");
-    await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
-    await page.locator("#input-firstname").fill("Ada");
-    await page.locator("#input-lastname").fill("Lovelace");
-    await page.locator("#btn-start").click();
+    await startScratchSession(page);
     const profile = page.locator("#profile-button");
     await expect(profile.locator("svg")).toHaveCSS("cursor", "pointer");
     await expect(page.locator("#label-student")).toHaveCSS("cursor", "pointer");
-    await profile.locator("svg").click();
+    await profile.click();
+    const menu = page.locator("#profile-menu");
+    await expect(menu).toBeVisible();
+    for (const label of ["Profile", "Badges...", "Copy progress to clipboard",
+      "Save progress to file...", "Load progress from file...", "Clear progress"]) {
+      await expect(menu.getByRole("button", { name: label, exact: true })).toBeVisible();
+    }
+    await menu.locator("#btn-profile").click();
     const modal = page.locator("#settings-modal");
     await expect(modal).toBeVisible();
     const bounds = await modal.boundingBox();
@@ -38,38 +42,27 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 600 
     expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThan(2);
     expect(await modal.evaluate(el => getComputedStyle(el, "::backdrop").backgroundColor))
       .toBe("rgba(17, 24, 39, 0.6)");
-    for (const label of ["Save progress to file...", "Load progress from file...",
-      "Copy progress to clipboard...", "Clear progress..."]) {
-      await expect(modal.getByRole("button", { name: label, exact: true })).toBeVisible();
-      await expect(modal.getByRole("button", { name: label, exact: true }).locator("svg[aria-hidden='true']")).toHaveCount(1);
-    }
     await modal.locator("#settings-close").click();
-    await page.locator("#label-student").click();
-    await expect(modal).toBeVisible();
+    await openProfileMenu(page);
     const chooser = page.waitForEvent("filechooser");
-    await modal.getByRole("button", { name: "Load progress from file..." }).click();
+    await menu.getByRole("button", { name: "Load progress from file..." }).click();
     expect((await chooser).isMultiple()).toBe(false);
     await page.keyboard.press("Escape");
     await expect(modal).not.toBeVisible();
-    await expect(profile).toBeFocused();
   });
 }
 
 test("edit name, download backup, reject invalid files and restore without confirmation", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
-  await page.locator("#input-firstname").fill("Ada");
-  await page.locator("#input-lastname").fill("Lovelace");
-  await page.locator("#btn-start").click();
-  await page.locator("#label-student").click();
-  const modal = page.locator("#settings-modal");
+  await startScratchSession(page);
+  const modal = await openSettings(page);
   await expect(modal).toBeVisible();
   await modal.locator("#settings-firstname").fill("Augusta");
   await modal.locator("#btn-save-name").click();
-  await expect(page.locator("#label-student")).toHaveText("Augusta Lovelace");
+  await expect(page.locator("#label-student")).toHaveText("Augusta");
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).firstname)).toBe("Augusta");
+  await modal.locator("#settings-close").click();
   const downloadPromise = page.waitForEvent("download");
-  await modal.locator("#btn-save-backup").click();
+  await (await openProfileMenu(page)).locator("#btn-save-backup").click();
   const download = await downloadPromise;
   await expect(modal).not.toBeVisible();
   expect(download.suggestedFilename()).toBe("Augusta-Lovelace.0xf");
@@ -78,26 +71,27 @@ test("edit name, download backup, reject invalid files and restore without confi
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")));
   expect(downloaded).toEqual(stored);
 
-  await page.locator("#label-student").click();
-  await modal.locator("#backup-file").setInputFiles(file('{"firstname":"bad"}'));
-  await expect(modal.locator("#backup-status")).toContainText("Could not load backup");
-  await expect(page.locator("#label-student")).toHaveText("Augusta Lovelace");
+  await (await openProfileMenu(page)).locator("#btn-load-backup").click();
+  await page.locator("#backup-file").setInputFiles(file('{"firstname":"bad"}'));
+  await expect(page.locator("#backup-status")).toContainText("Could not load backup");
+  await expect(page.locator("#label-student")).toHaveText("Augusta");
   const dialogs = [];
   page.on("dialog", dialog => { dialogs.push(dialog.message()); return dialog.dismiss(); });
-  await modal.locator("#backup-file").setInputFiles(file(JSON.stringify(backup)));
-  await expect(page.locator("#label-student")).toHaveText("Grace Hopper");
+  await (await openProfileMenu(page)).locator("#btn-load-backup").click();
+  await page.locator("#backup-file").setInputFiles(file(JSON.stringify(backup)));
+  await expect(page.locator("#label-student")).toHaveText("Grace");
   await expect(modal).not.toBeVisible();
   expect(dialogs).toEqual([]);
-  await page.locator("#label-student").click();
-  await expect(modal.locator("#backup-status")).toBeEmpty();
+  await openSettings(page);
+  await expect(page.locator("#backup-status")).toBeEmpty();
   await expect(modal.locator("#settings-firstname")).toHaveValue("Grace");
   await expect(modal.locator("#settings-lastname")).toHaveValue("Hopper");
   await expect(page.locator("#score-binary_arithmetic-all")).toHaveText("8");
-  await expect(page.locator("#toggle-advanced-top")).toBeChecked();
+  await expect(page.locator("#toggle-advanced-profile")).toBeChecked();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_question_type)).toBe("binary_shift");
   await modal.locator("#settings-close").click();
   await page.reload();
-  await expect(page.locator("#label-student")).toHaveText("Grace Hopper", { timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Grace", { timeout: 120000 });
   expect((await page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")))).daily_usage_ms["2026-01-01"]).toBe(123456);
 });
 
@@ -108,17 +102,18 @@ test("backup can be loaded on startup when localStorage is blocked", async ({ pa
     }
   });
   await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator("#welcome-modal")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator("#btn-initial-load-backup")).toHaveText("Load progress from a file");
   await expect(page.locator("#initial-backup-status")).toContainText("storage is unavailable");
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Load progress from a backup file" }).click();
+  await page.locator("#btn-initial-load-backup").click();
   const chooser = await chooserPromise;
   await chooser.setFiles(file(JSON.stringify(backup)));
-  await expect(page.locator("#label-student")).toHaveText("Grace Hopper");
-  await expect(page.locator("#name-modal")).not.toBeVisible();
+  await expect(page.locator("#label-student")).toHaveText("Grace");
+  await expect(page.locator("#welcome-modal")).not.toBeVisible();
   await expect(page.locator("#settings-modal")).not.toBeVisible();
   await expect(page.locator("#storage-warning")).toContainText("storage is unavailable");
-  await page.locator("#label-student").click();
+  await openProfileMenu(page);
   const downloadPromise = page.waitForEvent("download");
   await page.locator("#btn-save-backup").click();
   const downloaded = await downloadPromise;
@@ -130,9 +125,9 @@ test("backup can be loaded on startup when localStorage is blocked", async ({ pa
 
 test("loading an older backup resets only its daily scores", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator("#welcome-modal")).toBeVisible({ timeout: 120000 });
   await page.locator("#initial-backup-file").setInputFiles(file(JSON.stringify({ ...backup, last_active_date: "yesterday" })));
-  await expect(page.locator("#name-modal")).not.toBeVisible();
+  await expect(page.locator("#welcome-modal")).not.toBeVisible();
   await expect(page.locator("#settings-modal")).not.toBeVisible();
   await expect(page.locator("#score-binary_arithmetic-today")).toHaveText("0");
   await expect(page.locator("#score-binary_arithmetic-all")).toHaveText("8");
@@ -142,14 +137,9 @@ test("loading an older backup resets only its daily scores", async ({ page }) =>
 });
 
 test("backup filename replaces unsafe filename characters", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
-  await page.locator("#input-firstname").fill("Eva/A");
-  await page.locator("#input-lastname").fill("B:con");
-  await page.locator("#btn-start").click();
-  await page.locator("#label-student").click();
+  await startScratchSession(page, "Eva/A", "B:con");
   const downloadPromise = page.waitForEvent("download");
-  await page.locator("#btn-save-backup").click();
+  await (await openProfileMenu(page)).locator("#btn-save-backup").click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("Eva_A-B_con.0xf");
   await expect(page.locator("#settings-modal")).not.toBeVisible();

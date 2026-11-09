@@ -1,6 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
 const path = require("path");
+const { startScratchSession, openProfileMenu, focusCategory, focusQuestionType, setAdvancedMode } = require("./ui-helpers");
 
 const categories = [
   "base_conversion", "binary_arithmetic", "unit_conversion",
@@ -13,13 +14,7 @@ test("focused selection respects category and advanced setting", () => {
 });
 
 async function startSession(page) {
-  await page.goto("/");
-  await page.waitForFunction(() => typeof document.getElementById("btn-start").onclick === "function", null, {
-    timeout: 120000,
-  });
-  await page.locator("#input-firstname").fill("Ada");
-  await page.locator("#input-lastname").fill("Lovelace");
-  await page.locator("#btn-start").click();
+  await startScratchSession(page);
   await expect(page.locator(".question-row")).toHaveCount(10);
 }
 
@@ -33,11 +28,11 @@ async function expectCategory(page, category) {
 
 test("focus, switch, reload, and clear retain scores and refresh questions", async ({ page }) => {
   await startSession(page);
-  const baseFocus = page.locator('[data-focus="base_conversion"]');
-  await baseFocus.click();
+  const baseFocus = page.locator('#focus-menu [data-focus="base_conversion"]');
+  await focusCategory(page, "base_conversion");
   await expectCategory(page, "base_conversion");
-  await expect(baseFocus).toHaveText("×");
-  await expect(baseFocus).toHaveAttribute("aria-label", "Stop focusing on Base conversion");
+  await expect(baseFocus).toHaveText("All Base conversion");
+  await expect(baseFocus).toHaveAttribute("aria-pressed", "true");
   for (const category of categories) {
     const score = page.locator(`[data-scorecard="${category}"]`);
     if (category === "base_conversion") await expect(score).not.toHaveClass(/focus-muted/);
@@ -66,20 +61,20 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
   await row.locator("input").fill(String(answer));
   await expect(page.locator("#score-base_conversion-today")).toHaveText("1");
   // Change focus before the answer animation removes the old row.
-  const binaryFocus = page.locator('[data-focus="binary_arithmetic"]');
-  await binaryFocus.click();
+  const binaryFocus = page.locator('#focus-menu [data-focus="binary_arithmetic"]');
+  await focusCategory(page, "binary_arithmetic");
   await expectCategory(page, "binary_arithmetic");
-  await expect(baseFocus).toHaveText("Focus on Base conversion");
+  await expect(baseFocus).toHaveAttribute("aria-pressed", "false");
   await page.waitForTimeout(1600);
   await expectCategory(page, "binary_arithmetic");
   await expect(page.locator("#score-base_conversion-today")).toHaveText("1");
 
   await page.reload();
-  await expect(binaryFocus).toHaveText("×", { timeout: 120000 });
+  await expect(binaryFocus).toHaveAttribute("aria-pressed", "true", { timeout: 120000 });
   await expectCategory(page, "binary_arithmetic");
   await expect(page.locator("#score-base_conversion-all")).toHaveText("1");
-  await binaryFocus.click();
-  await expect(binaryFocus).toHaveText("Focus on Binary arithmetic");
+  await focusCategory(page, "binary_arithmetic");
+  await expect(binaryFocus).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator(".score-trigger.focus-muted")).toHaveCount(0);
   await expect(page.locator(".question-row")).toHaveCount(10);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_category)).toBeNull();
@@ -87,37 +82,36 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
 
 test("start over clears the saved focus", async ({ page }) => {
   await startSession(page);
-  await page.locator('[data-focus="operators"]').click();
+  await focusCategory(page, "operators");
   await expectCategory(page, "operators");
-  await page.locator("#label-student").click();
-  await page.locator("#btn-start-over").click();
+  await (await openProfileMenu(page)).locator("#btn-start-over").click();
   await page.locator("#btn-confirm-reset").click();
-  await expect(page.locator("#name-modal")).toBeVisible();
+  await expect(page.locator("#welcome-modal")).toBeVisible();
   await expect(page.locator(".score-trigger.focus-muted")).toHaveCount(0);
-  await expect(page.locator('[data-focus="operators"]')).toHaveText("Focus on Operators");
+  await expect(page.locator('#focus-menu [data-focus="operators"]')).toHaveText("All Operators");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("cs_maths_state"))).toBeNull();
 });
 
-test("scorecard focus selects one question type and persists until cleared", async ({ page }) => {
+test("focus menu selects one question type and persists until cleared", async ({ page }) => {
   await startSession(page);
   const rows = page.locator("#questions-container .question-row");
-  const dialog = page.locator("#scorecard");
-  const shift = '[data-focus-type="binary_shift"]';
-  await page.locator('[data-scorecard="binary_arithmetic"]').click();
-  await dialog.locator(shift).click();
-  await expect(dialog).not.toBeVisible();
+  await focusQuestionType(page, "binary_shift");
   await expect(rows).toHaveCount(10);
   await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_shift"));
   await expect(page.locator('[data-scorecard="base_conversion"]')).toHaveClass(/focus-muted/);
-  await expect(page.locator('[data-focus="binary_arithmetic"]')).toHaveText("×");
+  await expect(page.locator('#focus-menu [data-focus="binary_arithmetic"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('#focus-menu [data-focus-type="binary_shift"]')).toHaveAttribute("aria-pressed", "true");
   await page.reload();
-  await expect(page.locator('[data-focus="binary_arithmetic"]')).toHaveText("×", { timeout: 120000 });
+  await expect(page.locator("#focus-button")).toBeVisible({ timeout: 120000 });
+  await expect(page.locator('#focus-menu [data-focus-type="binary_shift"]')).toHaveAttribute("aria-pressed", "true", { timeout: 120000 });
+  await expect(page.locator('#focus-menu [data-focus="binary_arithmetic"]')).toHaveAttribute("aria-pressed", "false");
   await expect(rows).toHaveCount(10);
   await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_shift"));
   await page.locator('[data-scorecard="average"]').click();
-  await expect(dialog.locator(shift)).toHaveText("×");
-  await dialog.locator(shift).click();
-  await expect(dialog).not.toBeVisible();
+  const dialog = page.locator("#scorecard");
+  await expect(dialog.locator("[data-focus], [data-focus-type]")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close scorecard" }).click();
+  await focusQuestionType(page, "binary_shift");
   await expect(page.locator(".score-trigger.focus-muted")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem("cs_maths_state"));
@@ -127,12 +121,11 @@ test("scorecard focus selects one question type and persists until cleared", asy
 
 test("turning off advanced mode returns advanced type focus to its master category", async ({ page }) => {
   await startSession(page);
-  await page.locator("#toggle-advanced-top").check();
-  await page.locator('[data-scorecard="binary_arithmetic"]').click();
-  await page.locator('[data-focus-type="binary_subtraction"]').click();
+  await setAdvancedMode(page, true);
+  await focusQuestionType(page, "binary_subtraction");
   const rows = page.locator("#questions-container .question-row");
   await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).toEqual(Array(10).fill("binary_subtraction"));
-  await page.locator("#toggle-advanced-top").uncheck();
+  await setAdvancedMode(page, false);
   await expectCategory(page, "binary_arithmetic");
   await expect.poll(() => rows.evaluateAll(elements => elements.map(el => el.dataset.questionType))).not.toContain("binary_subtraction");
   await expect.poll(() => page.evaluate(() => {
