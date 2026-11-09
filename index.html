@@ -23,6 +23,7 @@
     <style>
         body { font-family: 'Courier New', Courier, monospace; }
         body { transition: opacity 0.3s; }
+        button { cursor: pointer; }
         
         /* Streak Animation & Glow Effects */
         .glow-text {
@@ -70,8 +71,21 @@
         .score-trigger:hover { background: #e5e7eb; }
         .score-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
         .score-trigger.focus-muted { filter: grayscale(1); opacity: 0.55; }
-        .focus-trigger { font-size: 0.7rem; color: #4b5563; text-decoration: underline; cursor: pointer; }
-        .focus-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .menu-wrap { position: relative; }
+        .menu-ribbon { background: #e5e7eb; border-radius: 0.375rem; padding: 0 0.5rem; }
+        .menu-button { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
+        .menu-button:hover { background: #d1d5db; }
+        .menu-button svg { width: 1.2rem; height: 1.2rem; }
+        .menu-panel { position: absolute; top: 100%; z-index: 2; width: min(320px, calc(100vw - 2rem)); max-height: 65vh; overflow: auto; padding: 0.4rem; background: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        #focus-menu { left: 0; }
+        #profile-menu { right: 0; }
+        .menu-panel button, .menu-panel summary { display: block; width: 100%; padding: 0.5rem; text-align: left; cursor: pointer; border-radius: 0.25rem; }
+        .menu-panel button:hover, .menu-panel summary:hover { background: #f3f4f6; }
+        .menu-panel summary::after { content: "+"; float: right; }
+        .menu-panel details[open] > summary::after { content: "-"; }
+        .menu-panel button[aria-pressed="true"] { color: #1d4ed8; font-weight: bold; }
+        .menu-panel details button { padding-left: 1.5rem; }
+        .menu-button:focus-visible, .menu-panel button:focus-visible, .menu-panel summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
         .progress-dialog {
             position: fixed;
             inset: 0;
@@ -127,7 +141,6 @@
         .scorecard .score-number { text-align: right; white-space: nowrap; }
         .scorecard .category-heading th { padding-top: 1rem; color: var(--cat-text); }
         .scorecard .advanced-label { color: #6b7280; font-size: 0.75rem; }
-        .scorecard .focus-trigger { display: block; margin-top: 0.25rem; }
         .practice-layout { max-width: 90rem; margin: auto; }
         .badge-column { display: none; }
         .badge-column h2 { font-size: 0.8rem; font-weight: bold; margin-bottom: 0.75rem; }
@@ -201,26 +214,36 @@
                 border-left: 1px solid #d1d5db;
                 transform: translateX(-50%) rotate(45deg);
             }
-            .scorecard-content { padding: 1.25rem; max-height: inherit; overflow: auto; }
+            .scorecard-content { max-height: inherit; overflow: hidden; border-radius: inherit; }
+            .scorecard-scroll { padding: 1.25rem; max-height: inherit; overflow: auto; }
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 m-0 p-0 flex flex-col min-h-screen">
 
-    <!-- Modal overlay for Name Input -->
-    <div id="name-modal" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 hidden">
+    <div id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] max-w-[95vw] flex flex-col gap-4">
+            <h2 id="welcome-title" class="text-xl font-bold">Welcome to 0x!</h2>
+            <button type="button" id="btn-start-scratch" class="progress-action text-sm">Start from scratch</button>
+            <button type="button" id="btn-initial-load-backup" class="progress-action text-sm">Load progress from a file</button>
+            <input id="initial-backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
+            <p id="initial-backup-status" role="status" class="text-sm text-red-700"></p>
+        </div>
+    </div>
+
+    <div id="name-modal" role="dialog" aria-modal="true" aria-labelledby="name-title" class="fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 w-[360px] max-w-[95vw] max-h-[90vh] overflow-auto flex flex-col gap-4">
-            <h2 class="text-xl font-bold">Start your session</h2>
+            <h2 id="name-title" class="text-xl font-bold">Start from scratch</h2>
             <p class="text-sm text-gray-600">Enter your name to begin.</p>
             
             <div>
-                <label class="block text-sm font-semibold mb-1 text-gray-700">Firstname</label>
+                <label for="input-firstname" class="block text-sm font-semibold mb-1 text-gray-700">Firstname</label>
                 <input type="text" id="input-firstname" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                 <p id="error-firstname" class="text-red-500 text-xs mt-1 hidden">Enter a firstname</p>
             </div>
             
             <div>
-                <label class="block text-sm font-semibold mb-1 text-gray-700">Lastname</label>
+                <label for="input-lastname" class="block text-sm font-semibold mb-1 text-gray-700">Lastname</label>
                 <input type="text" id="input-lastname" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                 <p id="error-lastname" class="text-red-500 text-xs mt-1 hidden">Enter a lastname</p>
             </div>
@@ -230,10 +253,8 @@
                 Include advanced questions
             </label>
 
-            <button type="button" id="btn-initial-load-backup" class="progress-action text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m-4 4 4-4 4 4M4 17v3h16v-3"/></svg>Load progress from a backup file</button>
-            <input id="initial-backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
-            <p id="initial-backup-status" role="status" class="text-sm text-red-700"></p>
             <div class="flex justify-end mt-2">
+                <button type="button" id="btn-back-welcome" class="py-2 px-4">Back</button>
                 <button id="btn-start" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">Start</button>
             </div>
         </div>
@@ -242,9 +263,10 @@
     <dialog id="settings-modal" aria-labelledby="settings-title" class="progress-dialog">
         <div class="flex flex-col gap-4">
             <div class="flex justify-between items-center">
-                <h2 id="settings-title" class="text-xl font-bold">Your progress</h2>
+                <h2 id="settings-title" class="text-xl font-bold">Profile</h2>
                 <button type="button" id="settings-close" aria-label="Close settings" class="text-2xl">&times;</button>
             </div>
+            <p class="text-sm" title="Time while this page is visible, up to one minute after your last interaction">Active time today: <span id="time-today">0s</span><br>Active time all time: <span id="time-all">0s</span></p>
             <div>
                 <label for="settings-firstname" class="block text-sm font-semibold">Firstname</label>
                 <input id="settings-firstname" type="text" class="w-full p-2 border border-gray-300 rounded">
@@ -253,20 +275,11 @@
                 <label for="settings-lastname" class="block text-sm font-semibold">Lastname</label>
                 <input id="settings-lastname" type="text" class="w-full p-2 border border-gray-300 rounded">
             </div>
-            <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save name</button>
+            <label class="flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" id="toggle-advanced-profile" class="w-4 h-4"> Include advanced questions
+            </label>
+            <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save</button>
             <p id="settings-status" role="status" aria-live="polite" class="text-sm"></p>
-            <button type="button" id="btn-badges" class="progress-action text-sm">Badges...</button>
-            <button type="button" id="btn-export" class="progress-action text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="12" height="16" rx="2"/><path d="M16 4V2H8v2M4 8v12a2 2 0 0 0 2 2h10"/></svg>Copy progress to clipboard...</button>
-            <div id="export-result" class="hidden">
-                <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
-                <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
-                <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
-            </div>
-            <button type="button" id="btn-save-backup" class="progress-action text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg>Save progress to file...</button>
-            <button type="button" id="btn-load-backup" class="progress-action text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m-4 4 4-4 4 4M4 17v3h16v-3"/></svg>Load progress from file...</button>
-            <input id="backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
-            <p id="backup-status" role="status" aria-live="polite" class="text-sm"></p>
-            <button type="button" id="btn-start-over" class="progress-action progress-action-danger text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>Clear progress...</button>
         </div>
     </dialog>
 
@@ -312,7 +325,32 @@
     </div>
 
     <!-- Sticky Dashboard Top Bar -->
-    <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-4 z-40 shadow-sm flex flex-col gap-3">
+    <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-2 z-40 shadow-sm flex flex-col gap-3">
+        <nav aria-label="Main menu" class="menu-ribbon flex justify-between items-center w-full">
+            <div class="menu-wrap">
+                <button type="button" id="focus-button" class="menu-button" aria-expanded="false" aria-controls="focus-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>Focus on...</button>
+                <div id="focus-menu" class="menu-panel hidden"></div>
+            </div>
+            <div class="menu-wrap">
+                <button type="button" id="profile-button" class="menu-button" aria-expanded="false" aria-controls="profile-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span id="label-student">—</span></button>
+                <div id="profile-menu" class="menu-panel hidden">
+                    <button type="button" id="btn-profile">My details...</button>
+                    <button type="button" id="btn-scorecard" aria-haspopup="dialog">Scorecard...</button>
+                    <button type="button" id="btn-badges">Badges...</button>
+                    <button type="button" id="btn-export">Copy progress to clipboard...</button>
+                    <button type="button" id="btn-save-backup">Save progress to file...</button>
+                    <button type="button" id="btn-load-backup">Load progress from file...</button>
+                    <button type="button" id="btn-start-over" class="progress-action-danger">Clear progress...</button>
+                </div>
+            </div>
+        </nav>
+        <input id="backup-file" type="file" accept=".0xf,.json,application/json" class="hidden">
+        <p id="backup-status" role="status" aria-live="polite" class="text-sm text-red-700"></p>
+        <div id="export-result" class="hidden">
+            <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
+            <label id="export-text-label" for="export-text" class="text-sm hidden">Full export text (select and copy manually):</label>
+            <textarea id="export-text" readonly rows="4" class="w-full p-2 border border-gray-300 rounded hidden"></textarea>
+        </div>
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 5 Master Score Blocks + Average -->
             <div class="flex flex-col items-center">
@@ -323,7 +361,6 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </span>
             </button>
-            <button type="button" data-focus="base_conversion" class="focus-trigger">Focus on Base conversion</button>
             </div>
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="binary_arithmetic" data-cat="binary_arithmetic" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
@@ -333,7 +370,6 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </span>
             </button>
-            <button type="button" data-focus="binary_arithmetic" class="focus-trigger">Focus on Binary arithmetic</button>
             </div>
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="unit_conversion" data-cat="unit_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
@@ -343,7 +379,6 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </span>
             </button>
-            <button type="button" data-focus="unit_conversion" class="focus-trigger">Focus on Unit conversion</button>
             </div>
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="operators" data-cat="operators" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
@@ -353,7 +388,6 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </span>
             </button>
-            <button type="button" data-focus="operators" class="focus-trigger">Focus on Operators</button>
             </div>
             <div class="flex flex-col items-center">
             <button type="button" data-scorecard="bit_patterns" data-cat="bit_patterns" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
@@ -363,7 +397,6 @@
                     <span class="text-base font-medium opacity-75">(<span id="score-bit_patterns-all">0</span>)</span>
                 </span>
             </button>
-            <button type="button" data-focus="bit_patterns" class="focus-trigger">Focus on Bit patterns</button>
             </div>
             <button type="button" data-scorecard="average" data-cat="average" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Average</span>
@@ -376,32 +409,16 @@
 
         <dialog id="scorecard" class="scorecard" aria-labelledby="scorecard-title">
             <div class="scorecard-content">
+              <div class="scorecard-scroll">
                 <div class="scorecard-header">
                     <h2 id="scorecard-title"></h2>
                     <button type="button" id="scorecard-close" class="scorecard-close" aria-label="Close scorecard">&times;</button>
                 </div>
                 <div id="scorecard-scores"></div>
+              </div>
             </div>
         </dialog>
 
-        <div class="flex flex-wrap items-center max-w-4xl mx-auto w-full px-2 gap-4">
-            <label class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 cursor-pointer select-none">
-                <input type="checkbox" id="toggle-advanced-top" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                Include advanced questions
-            </label>
-
-            <span class="text-sm text-gray-700" title="Time while this page is visible, up to one minute after your last interaction">Active today: <span id="time-today">0s</span></span>
-            
-            <div class="ml-auto flex items-center gap-2">
-                <button type="button" id="profile-button" aria-haspopup="dialog" aria-label="Open your progress" class="flex items-center gap-2 text-lg font-bold text-blue-700 cursor-pointer">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="8" r="4" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 21a8 8 0 0 1 16 0" />
-                    </svg>
-                    <span id="label-student">—</span>
-                </button>
-            </div>
-        </div>
         <p id="storage-warning" role="alert" class="max-w-4xl mx-auto w-full text-sm text-red-700 hidden"></p>
     </div>
 
@@ -1500,7 +1517,7 @@
             else:
                 state.focus_question_type = None
 
-            document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+            document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             today = window.Date.new().toDateString()
             if "questions" in data:
@@ -1560,8 +1577,8 @@
             date = window.Date.new(timestamp)
             return "%04d-%02d-%02d" % (date.getFullYear(), date.getMonth() + 1, date.getDate())
 
-        def refresh_usage_display():
-            total = state.daily_usage_ms.get(local_date_key(window.Date.now()), 0) // 1000
+        def format_usage(milliseconds):
+            total = milliseconds // 1000
             hours, remainder = divmod(total, 3600)
             minutes, seconds = divmod(remainder, 60)
             parts = []
@@ -1570,7 +1587,11 @@
             if hours or minutes:
                 parts.append(str(minutes) + "m")
             parts.append(str(seconds) + "s")
-            document.getElementById("time-today").textContent = " ".join(parts)
+            return " ".join(parts)
+
+        def refresh_usage_display():
+            document.getElementById("time-today").textContent = format_usage(state.daily_usage_ms.get(local_date_key(window.Date.now()), 0))
+            document.getElementById("time-all").textContent = format_usage(sum(state.daily_usage_ms.values()))
 
         def checkpoint_usage(now):
             global usage_cursor, last_interaction
@@ -1648,6 +1669,7 @@
             return "0X1." + base64.urlsafe_b64encode(zlib.compress(raw)).decode("ascii").rstrip("=")
 
         async def export_scores(e):
+            close_menus()
             result = document.getElementById("export-result")
             status = document.getElementById("export-status")
             label = document.getElementById("export-text-label")
@@ -1675,7 +1697,6 @@
                 else:
                     status.textContent = ""
                     result.classList.add("hidden")
-                    document.getElementById("settings-modal").close()
                     document.getElementById("copy-success-modal").showModal()
                     return
             text.value = value
@@ -1686,6 +1707,8 @@
         # UI / DOM MANIPULATION
         # ==========================================
         scorecard_category = None
+        scorecard_anchor = None
+        scorecard_from_menu = False
 
         def scorecard_cell(row, tag, text, numeric=False):
             cell = document.createElement(tag)
@@ -1742,15 +1765,6 @@
                         advanced.className = "advanced-label"
                         advanced.textContent = " (advanced)"
                         label_cell.appendChild(advanced)
-                    focus_button = document.createElement("button")
-                    focus_button.type = "button"
-                    focus_button.className = "focus-trigger"
-                    focus_button.setAttribute("data-focus-type", q_type)
-                    selected = state.focus_question_type == q_type
-                    focus_button.textContent = "×" if selected else "Focus on " + label
-                    focus_button.setAttribute("aria-label", "Stop focusing on " + label if selected else "Focus on " + label)
-                    focus_button.setAttribute("aria-pressed", "true" if selected else "false")
-                    label_cell.appendChild(focus_button)
                     scorecard_cell(row, "td", str(today_scores.get(q_type, 0)), True)
                     scorecard_cell(row, "td", str(state.all_time_scores.get(q_type, 0)), True)
                     body.appendChild(row)
@@ -1761,8 +1775,7 @@
             if scorecard_category is None:
                 return
             dialog = document.getElementById("scorecard")
-            trigger = document.querySelector('[data-scorecard="' + scorecard_category + '"]')
-            rect = trigger.getBoundingClientRect()
+            rect = scorecard_anchor.getBoundingClientRect()
             width = min(680 if scorecard_category == "average" else 440, window.innerWidth - 32)
             left = max(16, min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 16))
             top = max(16, min(rect.bottom + 12, window.innerHeight - 120))
@@ -1770,9 +1783,11 @@
             dialog.style.setProperty("--scorecard-top", str(top) + "px")
             dialog.style.setProperty("--scorecard-arrow", str(max(16, min(width - 16, rect.left + rect.width / 2 - left))) + "px")
 
-        def open_scorecard(e):
-            global scorecard_category
-            scorecard_category = e.currentTarget.getAttribute("data-scorecard")
+        def show_scorecard(category, anchor, from_menu=False):
+            global scorecard_category, scorecard_anchor, scorecard_from_menu
+            scorecard_category = category
+            scorecard_anchor = anchor
+            scorecard_from_menu = from_menu
             dialog = document.getElementById("scorecard")
             dialog.classList.toggle("scorecard-wide", scorecard_category == "average")
             render_scorecard()
@@ -1780,12 +1795,25 @@
             dialog.showModal()
             document.getElementById("scorecard-close").focus()
 
+        def open_scorecard(e):
+            show_scorecard(e.currentTarget.getAttribute("data-scorecard"), e.currentTarget)
+
+        def open_menu_scorecard(e):
+            close_menus()
+            anchor = document.getElementById("profile-button")
+            anchor.focus()
+            show_scorecard("average", anchor, True)
+
         def close_scorecard(e):
             document.getElementById("scorecard").close()
 
         def scorecard_closed(e):
-            global scorecard_category
+            global scorecard_category, scorecard_anchor, scorecard_from_menu
+            if scorecard_from_menu:
+                document.getElementById("profile-button").focus()
             scorecard_category = None
+            scorecard_anchor = None
+            scorecard_from_menu = False
 
         def scorecard_backdrop_click(e):
             dialog = document.getElementById("scorecard")
@@ -1807,7 +1835,7 @@
                     master = QUESTION_CONFIG[sub_type]["master"]
                     daily_master[master] += count
 
-            name_display = (state.firstname + " " + state.lastname).strip()
+            name_display = state.firstname.strip()
             if name_display:
                 document.getElementById("label-student").innerText = name_display
             else:
@@ -1826,10 +1854,10 @@
                 score_trigger = document.querySelector('[data-scorecard="' + mc + '"]')
                 score_trigger.classList.toggle("focus-muted", bool(state.focus_category and state.focus_category != mc))
                 focus_trigger = document.querySelector('[data-focus="' + mc + '"]')
-                selected = state.focus_category == mc
-                focus_trigger.textContent = "×" if selected else "Focus on " + MASTER_LABELS[mc]
-                focus_trigger.setAttribute("aria-label", "Stop focusing on " + MASTER_LABELS[mc] if selected else "Focus on " + MASTER_LABELS[mc])
-                focus_trigger.setAttribute("aria-pressed", "true" if selected else "false")
+                if focus_trigger:
+                    focus_trigger.setAttribute("aria-pressed", "true" if state.focus_category == mc and not state.focus_question_type else "false")
+            for trigger in document.querySelectorAll("[data-focus-type]"):
+                trigger.setAttribute("aria-pressed", "true" if state.focus_question_type == trigger.getAttribute("data-focus-type") else "false")
 
             if len(MASTER_CATEGORIES) > 0:
                 avg_all_time = total_all_time / len(MASTER_CATEGORIES)
@@ -2020,10 +2048,65 @@
         # ==========================================
         # EVENT LISTENERS & INITIALIZATION
         # ==========================================
+        def close_menus():
+            for name in ("focus", "profile"):
+                document.getElementById(name + "-menu").classList.add("hidden")
+                document.getElementById(name + "-button").setAttribute("aria-expanded", "false")
+
+        def toggle_menu(e):
+            button = e.currentTarget
+            menu = document.getElementById(button.getAttribute("aria-controls"))
+            opening = menu.classList.contains("hidden")
+            close_menus()
+            if opening:
+                menu.classList.remove("hidden")
+                button.setAttribute("aria-expanded", "true")
+
+        def menu_document_click(e):
+            if not e.target.closest(".menu-wrap"):
+                close_menus()
+
+        def menu_keydown(e):
+            if e.key == "Escape":
+                for name in ("focus", "profile"):
+                    button = document.getElementById(name + "-button")
+                    if button.getAttribute("aria-expanded") == "true":
+                        close_menus()
+                        button.focus()
+                        break
+
+        def render_focus_menu():
+            menu = document.getElementById("focus-menu")
+            menu.replaceChildren()
+            for master in MASTER_CATEGORIES:
+                group = document.createElement("details")
+                summary = document.createElement("summary")
+                summary.textContent = MASTER_LABELS[master]
+                group.appendChild(summary)
+                category = document.createElement("button")
+                category.type = "button"
+                category.setAttribute("data-focus", master)
+                category.textContent = "All " + MASTER_LABELS[master]
+                group.appendChild(category)
+                types = [(q_type, config) for q_type, config in QUESTION_CONFIG.items()
+                         if config["master"] == master and (state.advanced_mode or not config["advanced"])]
+                types.sort(key=lambda item: item[1]["advanced"])
+                for q_type, config in types:
+                    button = document.createElement("button")
+                    button.type = "button"
+                    button.setAttribute("data-focus-type", q_type)
+                    button.textContent = (config.get("label") or QUESTION_LABELS[q_type]) + (" (advanced)" if config["advanced"] else "")
+                    group.appendChild(button)
+                menu.appendChild(group)
+
         def handle_focus(e):
-            category = e.currentTarget.getAttribute("data-focus")
-            state.focus_category = None if state.focus_category == category else category
+            button = e.target.closest("[data-focus]")
+            if not button:
+                return
+            category = button.getAttribute("data-focus")
+            state.focus_category = None if state.focus_category == category and not state.focus_question_type else category
             state.focus_question_type = None
+            close_menus()
             replace_questions()
             refresh_dashboard()
             save_state()
@@ -2039,21 +2122,31 @@
             else:
                 state.focus_category = QUESTION_CONFIG[q_type]["master"]
                 state.focus_question_type = q_type
-            document.getElementById("scorecard").close()
+            close_menus()
             replace_questions()
             refresh_dashboard()
             save_state()
 
-        def handle_toggle_advanced(e):
-            state.advanced_mode = e.target.checked
+        def set_advanced(enabled):
+            state.advanced_mode = enabled
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
-            document.getElementById("toggle-advanced-top").checked = state.advanced_mode
+            document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
             if not state.advanced_mode and state.focus_question_type and QUESTION_CONFIG[state.focus_question_type]["advanced"]:
                 state.focus_question_type = None
                 replace_questions()
-                refresh_dashboard()
-            save_state()
+            render_focus_menu()
+            refresh_dashboard()
             render_scorecard()
+
+        def show_start_form(e):
+            document.getElementById("welcome-modal").classList.add("hidden")
+            document.getElementById("name-modal").classList.remove("hidden")
+            document.getElementById("input-firstname").focus()
+
+        def show_welcome(e=None):
+            document.getElementById("name-modal").classList.add("hidden")
+            document.getElementById("welcome-modal").classList.remove("hidden")
+            document.getElementById("btn-start-scratch").focus()
 
         def start_session(e):
             fname_input = document.getElementById("input-firstname")
@@ -2073,6 +2166,7 @@
             if fname and lname:
                 state.firstname = fname
                 state.lastname = lname
+                set_advanced(document.getElementById("toggle-advanced-modal").checked)
                 document.getElementById("name-modal").classList.add("hidden")
                 
                 replace_questions()
@@ -2081,8 +2175,12 @@
                 usage_interaction(e)
 
         def open_settings(e):
+            close_menus()
+            checkpoint_usage(int(window.Date.now()))
+            refresh_usage_display()
             document.getElementById("settings-firstname").value = state.firstname
             document.getElementById("settings-lastname").value = state.lastname
+            document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
             document.getElementById("settings-status").textContent = ""
             document.getElementById("backup-status").textContent = ""
             document.getElementById("settings-modal").showModal()
@@ -2090,10 +2188,15 @@
         def close_settings(e):
             document.getElementById("settings-modal").close()
 
+        def settings_closed(e):
+            document.getElementById("profile-button").focus()
+
         def close_copy_success(e):
             document.getElementById("copy-success-modal").close()
 
         def choose_backup(e):
+            close_menus()
+            document.getElementById("backup-status").textContent = ""
             document.getElementById("backup-file").click()
 
         def choose_initial_backup(e):
@@ -2108,11 +2211,13 @@
                 return
             state.firstname = firstname
             state.lastname = lastname
+            set_advanced(document.getElementById("toggle-advanced-profile").checked)
             persisted = save_state()
             refresh_dashboard()
-            status.textContent = "Name saved." if persisted else "Name changed for this session; browser storage is unavailable."
+            status.textContent = "Profile saved." if persisted else "Profile changed for this session; browser storage is unavailable."
 
         def save_backup(e):
+            close_menus()
             status = document.getElementById("backup-status")
             try:
                 checkpoint_usage(int(window.Date.now()))
@@ -2126,7 +2231,6 @@
             except Exception as error:
                 status.textContent = "Could not save backup: " + str(error)
                 return
-            document.getElementById("settings-modal").close()
 
         async def load_backup(e):
             global usage_cursor, last_interaction
@@ -2148,6 +2252,7 @@
             usage_cursor = None
             last_interaction = None
             restore_state(data)
+            render_focus_menu()
             save_state()
             replace_questions()
             refresh_dashboard()
@@ -2158,6 +2263,7 @@
             document.getElementById("settings-lastname").value = state.lastname
             document.getElementById("settings-status").textContent = ""
             document.getElementById("name-modal").classList.add("hidden")
+            document.getElementById("welcome-modal").classList.add("hidden")
             document.getElementById("export-result").classList.add("hidden")
             document.getElementById("export-text").value = ""
             control.value = ""
@@ -2167,12 +2273,12 @@
                 settings.close()
 
         def prompt_reset(e):
-            document.getElementById("settings-modal").close()
+            close_menus()
             document.getElementById("reset-modal").classList.remove("hidden")
 
         def cancel_reset(e):
             document.getElementById("reset-modal").classList.add("hidden")
-            open_settings(e)
+            document.getElementById("profile-button").focus()
 
         def confirm_reset(e):
             global usage_cursor, last_interaction
@@ -2194,15 +2300,16 @@
             document.getElementById("export-result").classList.add("hidden")
             document.getElementById("export-text").value = ""
             
-            document.getElementById("toggle-advanced-top").checked = False
+            document.getElementById("toggle-advanced-profile").checked = False
             document.getElementById("toggle-advanced-modal").checked = False
+            render_focus_menu()
             
             clear_questions()
             document.getElementById("input-firstname").value = ""
             document.getElementById("input-lastname").value = ""
             
             document.getElementById("reset-modal").classList.add("hidden")
-            document.getElementById("name-modal").classList.remove("hidden")
+            show_welcome()
             refresh_dashboard()
             refresh_usage_display()
 
@@ -2392,7 +2499,7 @@
             checkpoint_usage(int(window.Date.now()))
             refresh_badges(True)
             render_badge_collection(badge_progress())
-            document.getElementById("settings-modal").close()
+            close_menus()
             document.getElementById("badges-modal").showModal()
             document.getElementById("badges-close").focus()
 
@@ -2433,18 +2540,25 @@
         scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
         for trigger in document.querySelectorAll("[data-scorecard]"):
             trigger.addEventListener("click", scorecard_open_proxy)
-        focus_proxy = hold_proxy(create_proxy(handle_focus))
-        for trigger in document.querySelectorAll("[data-focus]"):
-            trigger.addEventListener("click", focus_proxy)
+        document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_focus)))
+        document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_scorecard_focus)))
         document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
         document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
-        document.getElementById("scorecard-scores").addEventListener("click", hold_proxy(create_proxy(handle_scorecard_focus)))
         document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
         window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
         window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
-        document.getElementById("profile-button").addEventListener("click", hold_proxy(create_proxy(open_settings)))
+        document.getElementById("btn-start-scratch").addEventListener("click", hold_proxy(create_proxy(show_start_form)))
+        document.getElementById("btn-back-welcome").addEventListener("click", hold_proxy(create_proxy(show_welcome)))
+        menu_toggle_proxy = hold_proxy(create_proxy(toggle_menu))
+        for name in ("focus", "profile"):
+            document.getElementById(name + "-button").addEventListener("click", menu_toggle_proxy)
+        document.addEventListener("click", hold_proxy(create_proxy(menu_document_click)))
+        document.addEventListener("keydown", hold_proxy(create_proxy(menu_keydown)))
+        document.getElementById("btn-profile").addEventListener("click", hold_proxy(create_proxy(open_settings)))
+        document.getElementById("btn-scorecard").addEventListener("click", hold_proxy(create_proxy(open_menu_scorecard)))
         document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
+        document.getElementById("settings-modal").addEventListener("close", hold_proxy(create_proxy(settings_closed)))
         document.getElementById("btn-badges").addEventListener("click", hold_proxy(create_proxy(open_badges)))
         document.getElementById("badges-close").addEventListener("click", hold_proxy(create_proxy(close_badges)))
         document.getElementById("badges-modal").addEventListener("close", hold_proxy(create_proxy(badges_closed)))
@@ -2462,19 +2576,18 @@
         document.getElementById("backup-file").addEventListener("change", backup_proxy)
         document.getElementById("initial-backup-file").addEventListener("change", backup_proxy)
         document.getElementById("btn-export").addEventListener("click", hold_proxy(create_proxy(export_scores)))
-        toggle_advanced_proxy = hold_proxy(create_proxy(handle_toggle_advanced))
-        document.getElementById("toggle-advanced-top").addEventListener("change", toggle_advanced_proxy)
-        document.getElementById("toggle-advanced-modal").addEventListener("change", toggle_advanced_proxy)
-        
         document.getElementById("btn-start-over").onclick = hold_proxy(create_proxy(prompt_reset))
         document.getElementById("btn-cancel-reset").onclick = hold_proxy(create_proxy(cancel_reset))
         document.getElementById("btn-confirm-reset").onclick = hold_proxy(create_proxy(reset_with_badges))
 
         if load_state():
+            render_focus_menu()
             replace_questions()
             refresh_dashboard()
         else:
-            document.getElementById("name-modal").classList.remove("hidden")
+            render_focus_menu()
+            refresh_dashboard()
+            show_welcome()
 
         refresh_badges()
         refresh_usage_display()

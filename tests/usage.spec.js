@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
 const path = require("path");
 const { inflateSync } = require("zlib");
+const { startScratchSession, openProfileMenu, openSettings } = require("./ui-helpers");
 
 test("usage tracking accounts for idle time, day boundaries, persistence and reset", () => {
   const output = execFileSync("python3", [path.join(__dirname, "usage_checks.py")], { encoding: "utf8" });
@@ -19,22 +20,22 @@ test("export serializes scores and handles clipboard and form size failures", ()
 });
 
 test("usage is displayed and saved in a browser session", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.locator("#name-modal")).toBeVisible({ timeout: 120000 });
-  await page.locator("#input-firstname").fill("Ada");
-  await page.locator("#input-lastname").fill("Lovelace");
-  await page.locator("#btn-start").click();
+  await startScratchSession(page);
+  await openSettings(page);
   await expect(page.locator("#time-today")).not.toHaveText("0s", { timeout: 15000 });
+  await expect(page.locator("#time-all")).not.toHaveText("0s");
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")));
   expect(saved.usage_tracking_since).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(saved.daily_usage_ms[saved.usage_tracking_since]).toBeGreaterThan(0);
   await page.reload();
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
+  await expect(page.locator("#label-student")).toHaveText("Ada", { timeout: 120000 });
+  await openSettings(page);
   await expect(page.locator("#time-today")).not.toHaveText("0s");
-  await page.locator("#label-student").click();
-  await page.locator("#btn-start-over").click();
+  await page.locator("#settings-close").click();
+  await (await openProfileMenu(page)).locator("#btn-start-over").click();
   await page.locator("#btn-confirm-reset").click();
   await expect(page.locator("#time-today")).toHaveText("0s");
+  await expect(page.locator("#time-all")).toHaveText("0s");
   expect(await page.evaluate(() => localStorage.getItem("cs_maths_state"))).toBeNull();
 });
 
@@ -54,10 +55,10 @@ test("export copies a snapshot and offers manual copy on clipboard failure", asy
     } });
   });
   await page.goto("/");
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace", { timeout: 120000 });
-  await page.locator("#label-student").click();
-  await expect(page.locator("#btn-export")).toBeVisible();
-  await page.locator("#btn-export").click();
+  await expect(page.locator("#label-student")).toHaveText("Ada", { timeout: 120000 });
+  const profileMenu = await openProfileMenu(page);
+  await expect(profileMenu.locator("#btn-export")).toBeVisible();
+  await profileMenu.locator("#btn-export").click();
   const confirmation = page.locator("#copy-success-modal");
   await expect(confirmation).toBeVisible();
   await expect(page.locator("#settings-modal")).not.toBeVisible();
@@ -72,7 +73,7 @@ test("export copies a snapshot and offers manual copy on clipboard failure", asy
   await confirmation.getByRole("button", { name: "OK" }).click();
   await expect(confirmation).not.toBeVisible();
   await expect(page.locator("#settings-modal")).not.toBeVisible();
-  await page.locator("#label-student").click();
+  await openProfileMenu(page);
   await page.evaluate(() => { window.exportTest.fail = true; });
   await page.locator("#btn-export").click();
   await expect(page.locator("#export-status")).toContainText("Clipboard access failed");

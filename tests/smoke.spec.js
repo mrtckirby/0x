@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { startScratchSession } = require("./ui-helpers");
 
 const MASTER_CATEGORY_IDS = [
   "base_conversion",
@@ -113,6 +114,10 @@ function analyzePrompt(prompt) {
   const trimmed = prompt.replace(/\r/g, "").trim();
   let match;
 
+  if (trimmed.startsWith("What is the minimum file size of the image shown")) {
+    return { category: "bit_patterns", answer: null };
+  }
+
   match = trimmed.match(BASE_CONVERSION_PATTERN);
   if (match) {
     const [, rawValue, sourceBase, targetBase] = match;
@@ -222,8 +227,15 @@ function analyzePrompt(prompt) {
   throw new Error(`Unsupported prompt: ${trimmed}`);
 }
 
-function solvePrompt(prompt) {
-  return analyzePrompt(prompt).answer;
+async function solvePrompt(prompt, row) {
+  const analysis = analyzePrompt(prompt);
+  if (analysis.answer !== null) return analysis.answer;
+  const grid = row.locator('[role="img"]');
+  const dimensions = (await grid.getAttribute("aria-label")).match(/(\d+) columns by (\d+) rows/);
+  const colours = await grid.locator("[data-colour]").evaluateAll(
+    cells => new Set(cells.map(cell => cell.getAttribute("data-colour"))).size
+  );
+  return String(Number(dimensions[1]) * Number(dimensions[2]) * Math.ceil(Math.log2(colours)));
 }
 
 function categoryForPrompt(prompt) {
@@ -231,15 +243,7 @@ function categoryForPrompt(prompt) {
 }
 
 async function startSession(page) {
-  await page.goto("/");
-
-  await page.waitForFunction(() => typeof document.getElementById("btn-start").onclick === "function", null, {
-    timeout: 120000,
-  });
-
-  await page.locator("#input-firstname").fill("Ada");
-  await page.locator("#input-lastname").fill("Lovelace");
-  await page.locator("#btn-start").click();
+  await startScratchSession(page);
 }
 
 async function getTodayScoreTotal(page) {
@@ -260,7 +264,7 @@ test("starts a session and renders questions", async ({ page }) => {
   await startSession(page);
 
   await expect(page.locator("#name-modal")).toHaveClass(/hidden/);
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace");
+  await expect(page.locator("#label-student")).toHaveText("Ada");
 
   const questions = page.locator("#questions-container .question-row");
   await expect(questions.first()).toBeVisible({ timeout: 60000 });
@@ -284,7 +288,7 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
 
   const questions = page.locator("#questions-container .question-row");
   await expect(questions).toHaveCount(10);
-  await expect(page.locator("#label-student")).toHaveText("Ada Lovelace");
+  await expect(page.locator("#label-student")).toHaveText("Ada");
   await expect.poll(() => getTodayScoreTotal(page)).toBe(0);
   const expectedScores = Object.fromEntries(MASTER_CATEGORY_IDS.map((id) => [id, 0]));
 
@@ -292,7 +296,7 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
   const firstPrompt = await getPromptText(firstRow);
   const secondInput = questions.nth(1).locator("input[type='text']");
   expectedScores[categoryForPrompt(firstPrompt)] += 1;
-  await firstRow.locator("input[type='text']").fill(solvePrompt(firstPrompt));
+  await firstRow.locator("input[type='text']").fill(await solvePrompt(firstPrompt, firstRow));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(1);
   await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(firstPrompt))).toBe(expectedScores[categoryForPrompt(firstPrompt)]);
   await expect(secondInput).toBeFocused();
@@ -300,7 +304,7 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
   const focusedInput = page.locator(".question-row input[type='text']").nth(1);
   const secondPrompt = await getPromptText(questions.nth(1));
   expectedScores[categoryForPrompt(secondPrompt)] += 1;
-  await focusedInput.fill(solvePrompt(secondPrompt));
+  await focusedInput.fill(await solvePrompt(secondPrompt, questions.nth(1)));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(2);
   await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(secondPrompt))).toBe(expectedScores[categoryForPrompt(secondPrompt)]);
   await expect(questions.nth(2).locator("input[type='text']")).toBeFocused();
@@ -308,7 +312,7 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
   const lastRow = questions.nth(9);
   const lastPrompt = await getPromptText(lastRow);
   expectedScores[categoryForPrompt(lastPrompt)] += 1;
-  await lastRow.locator("input[type='text']").fill(solvePrompt(lastPrompt));
+  await lastRow.locator("input[type='text']").fill(await solvePrompt(lastPrompt, lastRow));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(3);
   await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(lastPrompt))).toBe(expectedScores[categoryForPrompt(lastPrompt)]);
   await expect.poll(() => questions.count()).toBe(10);
@@ -317,7 +321,7 @@ test("answers multiple questions without Pyodide proxy errors", async ({ page })
 
   const replacementLastPrompt = await getPromptText(questions.nth(9));
   expectedScores[categoryForPrompt(replacementLastPrompt)] += 1;
-  await replacementLastInput.fill(solvePrompt(replacementLastPrompt));
+  await replacementLastInput.fill(await solvePrompt(replacementLastPrompt, questions.nth(9)));
   await expect.poll(() => getTodayScoreTotal(page)).toBe(4);
   await expect.poll(() => getCategoryTodayScore(page, categoryForPrompt(replacementLastPrompt))).toBe(expectedScores[categoryForPrompt(replacementLastPrompt)]);
   await expect.poll(() => questions.count()).toBe(10);

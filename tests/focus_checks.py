@@ -76,15 +76,36 @@ class Date:
         return "today"
 
 
+class Element:
+    def __init__(self):
+        self.children = []
+        self.attributes = {}
+        self.textContent = ""
+        self.type = ""
+
+    def replaceChildren(self):
+        self.children.clear()
+
+    def appendChild(self, child):
+        self.children.append(child)
+
+    def setAttribute(self, name, value):
+        self.attributes[name] = value
+
+
 class Document:
     def __init__(self):
         self.elements = {
-            "toggle-advanced-top": types.SimpleNamespace(checked=False),
+            "toggle-advanced-profile": types.SimpleNamespace(checked=False),
             "toggle-advanced-modal": types.SimpleNamespace(checked=False),
+            "focus-menu": Element(),
         }
 
     def getElementById(self, key):
         return self.elements[key]
+
+    def createElement(self, name):
+        return Element()
 
 
 def load_saved(data):
@@ -156,7 +177,7 @@ ns["replace_questions"] = lambda: events.append("replace")
 ns["refresh_dashboard"] = lambda: events.append("refresh")
 ns["render_scorecard"] = lambda: events.append("render")
 ns["save_state"] = lambda: events.append("save")
-ns["document"].elements["scorecard"] = types.SimpleNamespace(close=lambda: events.append("close"))
+ns["close_menus"] = lambda: events.append("close")
 
 
 class Button:
@@ -182,13 +203,15 @@ assert (state.focus_category, state.focus_question_type) == (None, None)
 assert events == ["close", "replace", "refresh", "save"]
 events.clear()
 ns["handle_scorecard_focus"](types.SimpleNamespace(target=Button("binary_shift")))
-ns["handle_focus"](types.SimpleNamespace(currentTarget=Button("base_conversion")))
+ns["handle_focus"](types.SimpleNamespace(target=Button("base_conversion")))
 assert (state.focus_category, state.focus_question_type) == ("base_conversion", None)
 state.focus_category = "binary_arithmetic"
 state.focus_question_type = "binary_subtraction"
 state.advanced_mode = True
 events.clear()
-ns["handle_toggle_advanced"](types.SimpleNamespace(target=types.SimpleNamespace(checked=False)))
+ns["set_advanced"](False)
 assert (state.focus_category, state.focus_question_type) == ("binary_arithmetic", None)
-assert events == ["replace", "refresh", "save", "render"]
+assert events == ["replace", "refresh", "render"]
+assert ns["document"].elements["toggle-advanced-profile"].checked is False
+assert ns["document"].elements["toggle-advanced-modal"].checked is False
 print("ok")
