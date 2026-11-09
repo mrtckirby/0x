@@ -20,7 +20,7 @@ site, available [here](https://0x.sunsquashed.uk/).
 - gently favours topics with lower all-time correct counts when choosing new questions
 - the **Focus on** menu groups question types by master category and allows
   focusing on a category or a single question type, replacing the current
-  questions; selecting the active focus again clears it
+  questions; use **Clear focus** to return to all topics
 - focus is saved across reloads; turning off
   advanced questions while focused on an advanced type returns to its master category
 - respects the advanced questions setting when choosing focused questions
@@ -38,7 +38,10 @@ site, available [here](https://0x.sunsquashed.uk/).
   settings, the full scorecard, badges, score export, file save/load and a
   clear-progress action
 - the profile shows active time today and all time and allows editing the name
-  and advanced question setting; daily durations are stored locally. Time
+  and advanced question setting; it also offers system, light and dark themes.
+  The theme follows the system by default and is saved separately on this device,
+  so it is not included in progress backups or cleared when starting over.
+  Daily durations are stored locally. Time
   counts while the page is visible, up to one minute after the last pointer,
   keyboard, input or scroll interaction. Tracking starts on interaction after
   starting or returning to the page, and resumes on interaction after hiding it

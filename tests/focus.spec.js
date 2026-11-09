@@ -31,6 +31,10 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
   const baseFocus = page.locator('#focus-menu [data-focus="base_conversion"]');
   await focusCategory(page, "base_conversion");
   await expectCategory(page, "base_conversion");
+  await expect(page.locator("#focus-button")).toHaveText("Clear focus");
+  await expect(page.locator("#focus-button")).not.toHaveAttribute("aria-expanded");
+  await expect(page.locator("#focus-clear-icon")).toBeVisible();
+  await expect(page.locator("#focus-search-icon")).toBeHidden();
   await expect(baseFocus).toHaveText("All Number bases");
   await expect(baseFocus).toHaveAttribute("aria-pressed", "true");
   for (const category of categories) {
@@ -62,6 +66,7 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
   await expect(page.locator("#score-base_conversion-today")).toHaveText("1");
   // Change focus before the answer animation removes the old row.
   const binaryFocus = page.locator('#focus-menu [data-focus="binary_arithmetic"]');
+  await page.getByRole("button", { name: "Clear focus" }).click();
   await focusCategory(page, "binary_arithmetic");
   await expectCategory(page, "binary_arithmetic");
   await expect(baseFocus).toHaveAttribute("aria-pressed", "false");
@@ -73,8 +78,13 @@ test("focus, switch, reload, and clear retain scores and refresh questions", asy
   await expect(binaryFocus).toHaveAttribute("aria-pressed", "true", { timeout: 120000 });
   await expectCategory(page, "binary_arithmetic");
   await expect(page.locator("#score-base_conversion-all")).toHaveText("1");
-  await focusCategory(page, "binary_arithmetic");
+  await expect(page.getByRole("button", { name: "Clear focus" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear focus" }).click();
   await expect(binaryFocus).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#focus-button")).toHaveText("Focus on...");
+  await expect(page.locator("#focus-button")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#focus-search-icon")).toBeVisible();
+  await expect(page.locator("#focus-clear-icon")).toBeHidden();
   await expect(page.locator(".score-block.focus-muted")).toHaveCount(0);
   await expect(page.locator(".question-row")).toHaveCount(10);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_category)).toBeNull();
@@ -111,7 +121,7 @@ test("focus menu selects one question type and persists until cleared", async ({
   const dialog = page.locator("#scorecard");
   await expect(dialog.locator("[data-focus], [data-focus-type]")).toHaveCount(0);
   await page.getByRole("button", { name: "Close scorecard" }).click();
-  await focusQuestionType(page, "binary_shift");
+  await page.getByRole("button", { name: "Clear focus" }).click();
   await expect(page.locator(".score-block.focus-muted")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem("cs_maths_state"));
