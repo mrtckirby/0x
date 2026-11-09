@@ -50,7 +50,7 @@ test("available portraits load on their earned badges and remain compact", async
   }
   await (await openProfileMenu(page)).locator("#btn-badges").click();
   for (const [id, file] of Object.entries(portraits)) {
-    const image = page.locator(`#badge-collection [data-badge="${id}"] img`);
+    const image = page.locator(`#collection-${id} img`);
     await expect(image).toHaveAttribute("src", `./badge-images/${file}.png`);
     await expect.poll(() => image.evaluate(el => el.complete && el.naturalWidth > 0)).toBe(true);
   }
@@ -79,6 +79,7 @@ test("earned badges, collection, details and responsive layout", async ({ page }
 
   await engagement.getByRole("button", { name: /Ada Lovelace/ }).click();
   await expect(page.locator("#badge-detail-modal")).toContainText("Analytical Engine");
+  await expect(page.locator("#badge-detail-portrait")).toHaveAttribute("src", "./badge-images/lovelace.png");
   await expect(page.locator("#badge-detail-modal")).toContainText("10 minutes");
   await page.locator("#badge-detail-close").click();
 
@@ -99,6 +100,14 @@ test("earned badges, collection, details and responsive layout", async ({ page }
   await expect(collection).toBeVisible();
   await expect(collection).toContainText("Grace Hopper · Keep Iterating (locked)");
   await expect(collection).toContainText("Practice days: 1 / 3");
+  await expect(collection.locator("#collection-hopper img")).toHaveAttribute("src", "./badge-images/hopper.png");
+  await expect.poll(() => collection.locator("#collection-hopper img").evaluate(el => el.complete && el.naturalWidth > 0)).toBe(true);
+  await expect(collection).toHaveCSS("overflow", "hidden");
+  await expect(collection).toHaveCSS("border-radius", "8px");
+  const scroller = collection.locator(".dialog-scroll");
+  expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   await collection.getByRole("button", { name: /Alan Turing/ }).click();
   await expect(page.locator("#badge-detail-modal")).toContainText("10 correct answers");
   await page.locator("#badge-detail-close").click();

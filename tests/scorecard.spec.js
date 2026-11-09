@@ -25,126 +25,62 @@ async function loadScores(page, lastActiveToday = true) {
   await expect(page.locator("#score-avg-all")).toHaveText("5.00");
 }
 
-test("category scorecard shows existing question types and closes from outside or X", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await loadScores(page);
-  const trigger = page.locator('[data-scorecard="base_conversion"]');
-  const dialog = page.locator("#scorecard");
-  await trigger.click();
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator("[data-focus], [data-focus-type]")).toHaveCount(0);
-  await expect(dialog.locator("#scorecard-title")).toHaveText("Base conversion");
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(2);
-  await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["2", "7"]);
-  await expect(dialog.locator('[data-question-type="number_of_values"] td')).toHaveText(["4", "6"]);
-  await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"]')).toHaveCount(0);
-  const triggerBox = await trigger.boundingBox();
-  const dialogBox = await dialog.boundingBox();
-  expect(dialogBox.y).toBeGreaterThan(triggerBox.y + triggerBox.height);
-  expect(dialogBox.width).toBeLessThan(500);
-  await page.mouse.click(10, 850);
-  await expect(dialog).not.toBeVisible();
-  await expect(trigger).toBeFocused();
-  await trigger.click();
-  await page.getByRole("button", { name: "Close scorecard" }).click();
-  await expect(dialog).not.toBeVisible();
-});
+for (const viewport of [{ width: 1280, height: 600 }, { width: 390, height: 600 }]) {
+  test(`scorecard is centered, scrollable and dismissible at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await loadScores(page, false);
+    const blocks = page.locator(".score-block");
+    await expect(blocks).toHaveCount(6);
+    await expect(page.locator("[data-scorecard]")).toHaveCount(0);
+    await blocks.first().click();
+    await expect(page.locator("#scorecard")).toBeHidden();
+    await (await openProfileMenu(page)).locator("#btn-scorecard").click();
+    const dialog = page.locator("#scorecard");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
+    await expect(dialog.locator(".category-heading")).toHaveCount(5);
+    await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
+    await expect(dialog.locator('.category-heading[data-cat="base_conversion"] th, .category-heading[data-cat="base_conversion"] td'))
+      .toHaveText(["Number bases", "0", "17"]);
+    await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["0", "7"]);
+    await expect(dialog.locator('[data-question-type="unit_conversion"] th')).toHaveText("Data sizes");
+    await expect(dialog).toContainText("Category totals include advanced scores");
+    const box = await dialog.boundingBox();
+    expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
+    expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(2);
+    await expect(dialog).toHaveCSS("overflow", "hidden");
+    await expect(dialog).toHaveCSS("border-radius", "8px");
+    const scroller = dialog.locator(".dialog-scroll");
+    expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+    await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    await expect(dialog.locator("#scorecard-close")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(page.locator("#profile-button")).toBeFocused();
+    await (await openProfileMenu(page)).locator("#btn-scorecard").click();
+    await page.mouse.click(1, 1);
+    await expect(dialog).toBeHidden();
+    await expect(page.locator("#profile-button")).toBeFocused();
+  });
+}
 
-test("average scorecard contains all categories and their subtotals", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await loadScores(page);
-  await page.locator('[data-scorecard="average"]').click();
-  const dialog = page.locator("#scorecard");
-  await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
-  await expect(dialog.locator("[data-focus], [data-focus-type]")).toHaveCount(0);
-  await expect(dialog.locator(".category-heading")).toHaveCount(5);
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
-  await expect(dialog.locator('.category-heading[data-cat="base_conversion"] th, .category-heading[data-cat="base_conversion"] td'))
-    .toHaveText(["Base conversion", "7", "17"]);
-  await expect(dialog.locator('.category-heading[data-cat="binary_arithmetic"] th, .category-heading[data-cat="binary_arithmetic"] td'))
-    .toHaveText(["Binary arithmetic", "3", "8"]);
-  await expect(dialog.locator('[data-question-type="ip_host_id"]')).toHaveCount(0);
-  await expect(dialog).toContainText("Category totals include advanced scores");
-  expect((await dialog.boundingBox()).width).toBeGreaterThan(500);
-  await page.keyboard.press("Escape");
-  await expect(dialog).not.toBeVisible();
-});
-
-test("profile menu opens the full scorecard with rounded scrolling and restores focus", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 600 });
+test("advanced mode reveals advanced types after standard types", async ({ page }) => {
   await loadScores(page);
   await setAdvancedMode(page, true);
-  const dialog = page.locator("#scorecard");
-  await page.locator('[data-scorecard="average"]').click();
-  const averageContent = await dialog.locator("#scorecard-scores").innerText();
-  await page.keyboard.press("Escape");
-
   await (await openProfileMenu(page)).locator("#btn-scorecard").click();
-  await expect(page.locator("#profile-menu")).toBeHidden();
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
-  await expect(dialog.locator("#scorecard-scores")).toHaveText(averageContent, { useInnerText: true });
-  const wrapper = dialog.locator(".scorecard-content");
-  const scroller = dialog.locator(".scorecard-scroll");
-  await expect(wrapper).toHaveCSS("overflow", "hidden");
-  await expect(wrapper).toHaveCSS("border-radius", "12px");
-  expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-  await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
-  expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
-  await expect(dialog.locator("#scorecard-close")).toHaveCSS("cursor", "pointer");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#profile-button")).toBeFocused();
-});
-
-test("advanced mode reveals advanced types after standard types in both scorecards", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await loadScores(page);
-  await setAdvancedMode(page, true);
-  await page.locator('[data-scorecard="bit_patterns"]').click();
   const dialog = page.locator("#scorecard");
-  const expectedOrder = [
-    "image_representation", "bitwise_operators", "ip_network_address", "ip_host_id",
-    "ip_cidr_to_mask", "ip_mask_to_cidr", "ip_usable_hosts", "ip_min_subnet",
-    "ip_broadcast_address", "ip_first_last_host",
-  ];
-  await expect.poll(() => dialog.locator("[data-question-type]").evaluateAll(
-    rows => rows.map(row => row.getAttribute("data-question-type"))
-  )).toEqual(expectedOrder);
-  await page.getByRole("button", { name: "Close scorecard" }).click();
-  await page.locator('[data-scorecard="average"]').click();
   await expect(dialog.locator("[data-question-type]")).toHaveCount(24);
   await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"] td')).toHaveText(["1", "4"]);
   const bitPatternRows = dialog.locator('.category-heading[data-cat="bit_patterns"] ~ [data-question-type]');
-  await expect.poll(() => bitPatternRows.evaluateAll(
-    rows => rows.map(row => row.getAttribute("data-question-type"))
-  )).toEqual(expectedOrder);
+  await expect.poll(() => bitPatternRows.evaluateAll(rows => rows.map(row => row.getAttribute("data-question-type")))).toEqual([
+    "image_representation", "bitwise_operators", "ip_network_address", "ip_host_id",
+    "ip_cidr_to_mask", "ip_mask_to_cidr", "ip_usable_hosts", "ip_min_subnet",
+    "ip_broadcast_address", "ip_first_last_host",
+  ]);
   await expect(dialog).not.toContainText("Category totals include advanced scores");
-  await page.keyboard.press("Escape");
+  await page.locator("#scorecard-close").click();
   await setAdvancedMode(page, false);
-  await page.locator('[data-scorecard="bit_patterns"]').click();
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(2);
-});
-
-test("mobile scorecard fills screen, scrolls and supports keyboard dismissal", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 600 });
-  await loadScores(page, false);
-  const trigger = page.locator('[data-scorecard="average"]');
-  await trigger.focus();
-  await page.keyboard.press("Enter");
-  const dialog = page.locator("#scorecard");
-  await expect(dialog).toBeVisible();
-  const box = await dialog.boundingBox();
-  expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 600 });
-  await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["0", "7"]);
-  expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
-  await expect(page.getByRole("button", { name: "Close scorecard" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(dialog).not.toBeVisible();
-  await expect(trigger).toBeFocused();
   await (await openProfileMenu(page)).locator("#btn-scorecard").click();
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
-  expect(await dialog.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-  await page.getByRole("button", { name: "Close scorecard" }).click();
-  await expect(page.locator("#profile-button")).toBeFocused();
+  await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
 });

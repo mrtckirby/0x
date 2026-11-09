@@ -101,11 +101,13 @@ for advanced_mode in (False, True):
 
 headings = [row for row in all_rows if row.className == "category-heading"]
 assert len(headings) == len(ns["MASTER_CATEGORIES"])
-assert [cell.textContent for cell in headings[0].children] == ["Base conversion", "7", "17"]
+assert [cell.textContent for cell in headings[0].children] == ["Number bases", "7", "17"]
 assert [cell.textContent for cell in headings[1].children] == ["Binary arithmetic", "3", "8"]
+unit_row = next(row for row in all_rows if row.attributes.get("data-question-type") == "unit_conversion")
+assert unit_row.children[0].textContent == "Data sizes"
 assert len([row for row in all_rows if "data-question-type" in row.attributes]) == len(ns["QUESTION_CONFIG"])
 state.last_active_date = "yesterday"
-assert [cell.textContent for cell in rows("average")[0].children] == ["Base conversion", "0", "17"]
+assert [cell.textContent for cell in rows("average")[0].children] == ["Number bases", "0", "17"]
 state.advanced_mode = False
 rows("average")
 assert "include advanced scores" in doc.elements["scorecard-scores"].children[0].textContent

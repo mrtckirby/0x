@@ -58,9 +58,9 @@ test("edit name, download backup, reject invalid files and restore without confi
   await expect(modal).toBeVisible();
   await modal.locator("#settings-firstname").fill("Augusta");
   await modal.locator("#btn-save-name").click();
+  await expect(modal).toBeHidden();
   await expect(page.locator("#label-student")).toHaveText("Augusta");
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).firstname)).toBe("Augusta");
-  await modal.locator("#settings-close").click();
   const downloadPromise = page.waitForEvent("download");
   await (await openProfileMenu(page)).locator("#btn-save-backup").click();
   const download = await downloadPromise;
