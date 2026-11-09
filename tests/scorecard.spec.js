@@ -1,7 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
 const path = require("path");
-const { setAdvancedMode } = require("./ui-helpers");
+const { setAdvancedMode, openProfileMenu } = require("./ui-helpers");
 
 test("scorecard rendering matches the stored question types", () => {
   const output = execFileSync("python3", [path.join(__dirname, "scorecard_checks.py")], { encoding: "utf8" });
@@ -70,6 +70,32 @@ test("average scorecard contains all categories and their subtotals", async ({ p
   await expect(dialog).not.toBeVisible();
 });
 
+test("profile menu opens the full scorecard with rounded scrolling and restores focus", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await loadScores(page);
+  await setAdvancedMode(page, true);
+  const dialog = page.locator("#scorecard");
+  await page.locator('[data-scorecard="average"]').click();
+  const averageContent = await dialog.locator("#scorecard-scores").innerText();
+  await page.keyboard.press("Escape");
+
+  await (await openProfileMenu(page)).locator("#btn-scorecard").click();
+  await expect(page.locator("#profile-menu")).toBeHidden();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
+  await expect(dialog.locator("#scorecard-scores")).toHaveText(averageContent, { useInnerText: true });
+  const wrapper = dialog.locator(".scorecard-content");
+  const scroller = dialog.locator(".scorecard-scroll");
+  await expect(wrapper).toHaveCSS("overflow", "hidden");
+  await expect(wrapper).toHaveCSS("border-radius", "12px");
+  expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await expect(dialog.locator("#scorecard-close")).toHaveCSS("cursor", "pointer");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#profile-button")).toBeFocused();
+});
+
 test("advanced mode reveals advanced types after standard types in both scorecards", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await loadScores(page);
@@ -115,4 +141,10 @@ test("mobile scorecard fills screen, scrolls and supports keyboard dismissal", a
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();
+  await (await openProfileMenu(page)).locator("#btn-scorecard").click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
+  expect(await dialog.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await page.getByRole("button", { name: "Close scorecard" }).click();
+  await expect(page.locator("#profile-button")).toBeFocused();
 });

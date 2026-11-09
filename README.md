@@ -35,7 +35,8 @@ site, available [here](https://0x.sunsquashed.uk/).
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
 - opens a profile menu by clicking the student's first name, with profile
-  settings, badges, score export, file save/load and a clear-progress action
+  settings, the full scorecard, badges, score export, file save/load and a
+  clear-progress action
 - the profile shows active time today and all time and allows editing the name
   and advanced question setting; daily durations are stored locally. Time
   counts while the page is visible, up to one minute after the last pointer,

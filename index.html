@@ -23,6 +23,7 @@
     <style>
         body { font-family: 'Courier New', Courier, monospace; }
         body { transition: opacity 0.3s; }
+        button { cursor: pointer; }
         
         /* Streak Animation & Glow Effects */
         .glow-text {
@@ -71,8 +72,9 @@
         .score-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
         .score-trigger.focus-muted { filter: grayscale(1); opacity: 0.55; }
         .menu-wrap { position: relative; }
+        .menu-ribbon { background: #e5e7eb; border-radius: 0.375rem; padding: 0 0.5rem; }
         .menu-button { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
-        .menu-button:hover { background: #e5e7eb; }
+        .menu-button:hover { background: #d1d5db; }
         .menu-button svg { width: 1.2rem; height: 1.2rem; }
         .menu-panel { position: absolute; top: 100%; z-index: 2; width: min(320px, calc(100vw - 2rem)); max-height: 65vh; overflow: auto; padding: 0.4rem; background: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
         #focus-menu { left: 0; }
@@ -212,7 +214,8 @@
                 border-left: 1px solid #d1d5db;
                 transform: translateX(-50%) rotate(45deg);
             }
-            .scorecard-content { padding: 1.25rem; max-height: inherit; overflow: auto; }
+            .scorecard-content { max-height: inherit; overflow: hidden; border-radius: inherit; }
+            .scorecard-scroll { padding: 1.25rem; max-height: inherit; overflow: auto; }
         }
     </style>
 </head>
@@ -323,20 +326,21 @@
 
     <!-- Sticky Dashboard Top Bar -->
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-2 z-40 shadow-sm flex flex-col gap-3">
-        <nav aria-label="Main menu" class="flex justify-between items-center w-full">
+        <nav aria-label="Main menu" class="menu-ribbon flex justify-between items-center w-full">
             <div class="menu-wrap">
-                <button type="button" id="focus-button" class="menu-button" aria-expanded="false" aria-controls="focus-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>Focus on</button>
+                <button type="button" id="focus-button" class="menu-button" aria-expanded="false" aria-controls="focus-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>Focus on...</button>
                 <div id="focus-menu" class="menu-panel hidden"></div>
             </div>
             <div class="menu-wrap">
                 <button type="button" id="profile-button" class="menu-button" aria-expanded="false" aria-controls="profile-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span id="label-student">—</span></button>
                 <div id="profile-menu" class="menu-panel hidden">
-                    <button type="button" id="btn-profile">Profile</button>
+                    <button type="button" id="btn-profile">My details...</button>
+                    <button type="button" id="btn-scorecard" aria-haspopup="dialog">Scorecard...</button>
                     <button type="button" id="btn-badges">Badges...</button>
-                    <button type="button" id="btn-export">Copy progress to clipboard</button>
+                    <button type="button" id="btn-export">Copy progress to clipboard...</button>
                     <button type="button" id="btn-save-backup">Save progress to file...</button>
                     <button type="button" id="btn-load-backup">Load progress from file...</button>
-                    <button type="button" id="btn-start-over" class="progress-action-danger">Clear progress</button>
+                    <button type="button" id="btn-start-over" class="progress-action-danger">Clear progress...</button>
                 </div>
             </div>
         </nav>
@@ -405,11 +409,13 @@
 
         <dialog id="scorecard" class="scorecard" aria-labelledby="scorecard-title">
             <div class="scorecard-content">
+              <div class="scorecard-scroll">
                 <div class="scorecard-header">
                     <h2 id="scorecard-title"></h2>
                     <button type="button" id="scorecard-close" class="scorecard-close" aria-label="Close scorecard">&times;</button>
                 </div>
                 <div id="scorecard-scores"></div>
+              </div>
             </div>
         </dialog>
 
@@ -1701,6 +1707,8 @@
         # UI / DOM MANIPULATION
         # ==========================================
         scorecard_category = None
+        scorecard_anchor = None
+        scorecard_from_menu = False
 
         def scorecard_cell(row, tag, text, numeric=False):
             cell = document.createElement(tag)
@@ -1767,8 +1775,7 @@
             if scorecard_category is None:
                 return
             dialog = document.getElementById("scorecard")
-            trigger = document.querySelector('[data-scorecard="' + scorecard_category + '"]')
-            rect = trigger.getBoundingClientRect()
+            rect = scorecard_anchor.getBoundingClientRect()
             width = min(680 if scorecard_category == "average" else 440, window.innerWidth - 32)
             left = max(16, min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 16))
             top = max(16, min(rect.bottom + 12, window.innerHeight - 120))
@@ -1776,9 +1783,11 @@
             dialog.style.setProperty("--scorecard-top", str(top) + "px")
             dialog.style.setProperty("--scorecard-arrow", str(max(16, min(width - 16, rect.left + rect.width / 2 - left))) + "px")
 
-        def open_scorecard(e):
-            global scorecard_category
-            scorecard_category = e.currentTarget.getAttribute("data-scorecard")
+        def show_scorecard(category, anchor, from_menu=False):
+            global scorecard_category, scorecard_anchor, scorecard_from_menu
+            scorecard_category = category
+            scorecard_anchor = anchor
+            scorecard_from_menu = from_menu
             dialog = document.getElementById("scorecard")
             dialog.classList.toggle("scorecard-wide", scorecard_category == "average")
             render_scorecard()
@@ -1786,12 +1795,25 @@
             dialog.showModal()
             document.getElementById("scorecard-close").focus()
 
+        def open_scorecard(e):
+            show_scorecard(e.currentTarget.getAttribute("data-scorecard"), e.currentTarget)
+
+        def open_menu_scorecard(e):
+            close_menus()
+            anchor = document.getElementById("profile-button")
+            anchor.focus()
+            show_scorecard("average", anchor, True)
+
         def close_scorecard(e):
             document.getElementById("scorecard").close()
 
         def scorecard_closed(e):
-            global scorecard_category
+            global scorecard_category, scorecard_anchor, scorecard_from_menu
+            if scorecard_from_menu:
+                document.getElementById("profile-button").focus()
             scorecard_category = None
+            scorecard_anchor = None
+            scorecard_from_menu = False
 
         def scorecard_backdrop_click(e):
             dialog = document.getElementById("scorecard")
@@ -2534,6 +2556,7 @@
         document.addEventListener("click", hold_proxy(create_proxy(menu_document_click)))
         document.addEventListener("keydown", hold_proxy(create_proxy(menu_keydown)))
         document.getElementById("btn-profile").addEventListener("click", hold_proxy(create_proxy(open_settings)))
+        document.getElementById("btn-scorecard").addEventListener("click", hold_proxy(create_proxy(open_menu_scorecard)))
         document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
         document.getElementById("settings-modal").addEventListener("close", hold_proxy(create_proxy(settings_closed)))
         document.getElementById("btn-badges").addEventListener("click", hold_proxy(create_proxy(open_badges)))

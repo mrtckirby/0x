@@ -30,8 +30,10 @@ test("welcome, profile and focus menus support the rearranged keyboard-accessibl
   await expect(profileButton).toHaveAttribute("aria-expanded", "false");
   const profileMenu = await openProfileMenu(page);
   await expect(profileButton).toHaveAttribute("aria-expanded", "true");
-  for (const id of ["btn-profile", "btn-badges", "btn-export", "btn-save-backup", "btn-load-backup", "btn-start-over"]) {
+  for (const id of ["btn-profile", "btn-scorecard", "btn-badges", "btn-export", "btn-save-backup", "btn-load-backup", "btn-start-over"]) {
     await expect(profileMenu.locator(`#${id}`)).toBeVisible();
+    await expect(profileMenu.locator(`#${id}`)).toHaveText(/\.\.\.$/);
+    await expect(profileMenu.locator(`#${id}`)).toHaveCSS("cursor", "pointer");
   }
   for (const id of ["backup-status", "export-result"]) {
     expect(await page.locator(`#${id}`).evaluate(element => element.closest("#profile-menu"))).toBeNull();
@@ -42,6 +44,11 @@ test("welcome, profile and focus menus support the rearranged keyboard-accessibl
   await expect(profileButton).toHaveAttribute("aria-expanded", "false");
 
   const focusButton = page.locator("#focus-button");
+  await expect(focusButton).toHaveText("Focus on...");
+  await expect(focusButton).toHaveCSS("cursor", "pointer");
+  const ribbonColor = await page.locator(".menu-ribbon").evaluate(el => getComputedStyle(el).backgroundColor);
+  const dashboardColor = await page.locator(".menu-ribbon").evaluate(el => getComputedStyle(el.parentElement).backgroundColor);
+  expect(ribbonColor).not.toBe(dashboardColor);
   const focusMenu = page.locator("#focus-menu");
   await expect(focusButton).toHaveAttribute("aria-controls", "focus-menu");
   await focusButton.click();
@@ -67,6 +74,8 @@ test("welcome, profile and focus menus support the rearranged keyboard-accessibl
   await expect(settings).toBeVisible();
   await expect(settings.locator("#time-today")).toBeVisible();
   await expect(settings.locator("#time-all")).toBeVisible();
+  await expect(settings.locator("#settings-close")).toHaveCSS("cursor", "pointer");
+  await expect(settings.locator("#btn-save-name")).toHaveCSS("cursor", "pointer");
   await expect(settings.locator("#toggle-advanced-profile")).toBeChecked();
   await settings.locator("#toggle-advanced-profile").uncheck();
   await settings.locator("#btn-save-name").click();

@@ -30,8 +30,8 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 600 
     await profile.click();
     const menu = page.locator("#profile-menu");
     await expect(menu).toBeVisible();
-    for (const label of ["Profile", "Badges...", "Copy progress to clipboard",
-      "Save progress to file...", "Load progress from file...", "Clear progress"]) {
+    for (const label of ["My details...", "Scorecard...", "Badges...", "Copy progress to clipboard...",
+      "Save progress to file...", "Load progress from file...", "Clear progress..."]) {
       await expect(menu.getByRole("button", { name: label, exact: true })).toBeVisible();
     }
     await menu.locator("#btn-profile").click();
