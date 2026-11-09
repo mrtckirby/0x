@@ -56,10 +56,13 @@ test("welcome, profile and focus menus support the rearranged keyboard-accessibl
   await expect(focusButton).toHaveAttribute("aria-expanded", "true");
   await expect(focusMenu.locator("details")).toHaveCount(5);
   const baseGroup = focusMenu.locator('[data-focus="base_conversion"]').locator("xpath=ancestor::details[1]");
-  await expect(baseGroup.locator("summary")).toHaveText("Base conversion");
+  await expect(baseGroup.locator("summary")).toHaveText("Number bases");
   await baseGroup.locator("summary").click();
-  await expect(baseGroup.locator('[data-focus="base_conversion"]')).toHaveText("All Base conversion");
+  await expect(baseGroup.locator('[data-focus="base_conversion"]')).toHaveText("All Number bases");
   await expect(baseGroup.locator('[data-focus="base_conversion"]')).toHaveAttribute("aria-pressed", "false");
+  const unitGroup = focusMenu.locator('[data-focus="unit_conversion"]').locator("xpath=ancestor::details[1]");
+  await unitGroup.locator("summary").click();
+  await expect(unitGroup.locator('[data-focus-type="unit_conversion"]')).toHaveText("Data sizes");
 
   const binaryGroup = focusMenu.locator('[data-focus="binary_arithmetic"]').locator("xpath=ancestor::details[1]");
   await binaryGroup.locator("summary").click();
@@ -77,10 +80,16 @@ test("welcome, profile and focus menus support the rearranged keyboard-accessibl
   await expect(settings.locator("#settings-close")).toHaveCSS("cursor", "pointer");
   await expect(settings.locator("#btn-save-name")).toHaveCSS("cursor", "pointer");
   await expect(settings.locator("#toggle-advanced-profile")).toBeChecked();
+  await settings.locator("#settings-firstname").fill("");
+  await settings.locator("#btn-save-name").click();
+  await expect(settings).toBeVisible();
+  await expect(settings.locator("#settings-status")).toHaveText("Enter both a firstname and lastname.");
+  await settings.locator("#settings-firstname").fill("Ada");
   await settings.locator("#toggle-advanced-profile").uncheck();
   await settings.locator("#btn-save-name").click();
+  await expect(settings).toBeHidden();
+  await expect(profileButton).toBeFocused();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).advanced_mode)).toBe(false);
-  await settings.locator("#settings-close").click();
   await (await openProfileMenu(page)).locator("#btn-profile").click();
   await expect(page.locator("#toggle-advanced-profile")).not.toBeChecked();
 });

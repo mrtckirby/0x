@@ -67,10 +67,7 @@
             transition: text-shadow 0.3s ease;
         }
 
-        .score-trigger { cursor: pointer; border-radius: 0.375rem; }
-        .score-trigger:hover { background: #e5e7eb; }
-        .score-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
-        .score-trigger.focus-muted { filter: grayscale(1); opacity: 0.55; }
+        .score-block.focus-muted { filter: grayscale(1); opacity: 0.55; }
         .menu-wrap { position: relative; }
         .menu-ribbon { background: #e5e7eb; border-radius: 0.375rem; padding: 0 0.5rem; }
         .menu-button { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
@@ -116,21 +113,9 @@
         .progress-action:hover { background: #e5e7eb; }
         .progress-action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
         .progress-action-danger { color: #b91c1c; }
-        .scorecard {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            max-height: none;
-            margin: 0;
-            border: 0;
-            padding: 1.25rem;
-            background: white;
-            color: #111827;
-            overflow: auto;
-        }
-        .scorecard::backdrop { background: rgba(17, 24, 39, 0.35); }
+        .scroll-dialog { padding: 0; overflow: hidden; }
+        .dialog-scroll { max-height: 90vh; overflow: auto; padding: 1.5rem; }
+        .scorecard { width: min(680px, 95vw); }
         .scorecard-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
         .scorecard h2 { font-size: 1.25rem; font-weight: bold; }
         .scorecard-close { font-size: 1.75rem; line-height: 1; cursor: pointer; padding: 0.25rem; }
@@ -168,7 +153,12 @@
             30% { opacity: 1; transform: scale(1.5) rotate(45deg); }
             100% { opacity: 0; transform: scale(2.2) rotate(90deg); }
         }
-        .badge-list-entry { border-top: 1px solid #d1d5db; padding: 0.75rem 0; }
+        .badge-list-entry { display: flex; align-items: flex-start; gap: 1rem; border-top: 1px solid #d1d5db; padding: 0.75rem 0; }
+        .badge-list-entry .badge-portrait, .badge-detail-portrait {
+            width: 80px; height: 80px; flex: none; object-fit: contain; margin: 0;
+        }
+        .badge-list-content { min-width: 0; flex: 1; }
+        .badge-detail-body { display: flex; align-items: flex-start; gap: 1rem; margin-top: 1rem; }
         .badge-list-entry p { font-size: 0.85rem; margin-top: 0.25rem; }
         .badge-list-entry .badge-card { margin-bottom: 0; }
         .badge-notice {
@@ -186,36 +176,6 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .badge-card.new-badge::after { animation: none; content: none; }
-        }
-        @media (min-width: 768px) {
-            .scorecard {
-                inset: auto;
-                width: min(440px, calc(100vw - 32px));
-                height: auto;
-                max-height: calc(100vh - var(--scorecard-top) - 16px);
-                top: var(--scorecard-top);
-                left: var(--scorecard-left);
-                overflow: visible;
-                padding: 0;
-                border: 1px solid #d1d5db;
-                border-radius: 0.75rem;
-                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-            }
-            .scorecard-wide { width: min(680px, calc(100vw - 32px)); }
-            .scorecard::before {
-                content: "";
-                position: absolute;
-                top: -9px;
-                left: var(--scorecard-arrow);
-                width: 16px;
-                height: 16px;
-                background: white;
-                border-top: 1px solid #d1d5db;
-                border-left: 1px solid #d1d5db;
-                transform: translateX(-50%) rotate(45deg);
-            }
-            .scorecard-content { max-height: inherit; overflow: hidden; border-radius: inherit; }
-            .scorecard-scroll { padding: 1.25rem; max-height: inherit; overflow: auto; }
         }
     </style>
 </head>
@@ -283,13 +243,15 @@
         </div>
     </dialog>
 
-    <dialog id="badges-modal" aria-labelledby="badges-title" class="progress-dialog">
+    <dialog id="badges-modal" aria-labelledby="badges-title" class="progress-dialog scroll-dialog">
+      <div class="dialog-scroll">
         <div class="scorecard-header">
             <h2 id="badges-title" class="text-xl font-bold">Your badges</h2>
             <button type="button" id="badges-close" class="badge-close text-2xl" aria-label="Close badges">&times;</button>
         </div>
         <p class="text-sm mt-2">Practice days require at least five minutes of active use. Usage is approximate and history begins when tracking started.</p>
         <div id="badge-collection"></div>
+      </div>
     </dialog>
 
     <dialog id="badge-detail-modal" aria-labelledby="badge-detail-title" class="progress-dialog">
@@ -297,8 +259,13 @@
             <h2 id="badge-detail-title" class="text-xl font-bold"></h2>
             <button type="button" id="badge-detail-close" class="badge-close text-2xl" aria-label="Close badge details">&times;</button>
         </div>
-        <p id="badge-detail-biography" class="mt-4"></p>
-        <p id="badge-detail-requirement" class="mt-4"></p>
+        <div class="badge-detail-body">
+            <img id="badge-detail-portrait" class="badge-detail-portrait" alt="">
+            <div>
+                <p id="badge-detail-biography"></p>
+                <p id="badge-detail-requirement" class="mt-4"></p>
+            </div>
+        </div>
     </dialog>
     <div id="badge-notice" class="badge-notice hidden">
         <span id="badge-announcement" role="status" aria-live="polite"></span>
@@ -354,69 +321,67 @@
         <div class="flex flex-wrap justify-center gap-3 md:gap-8 w-full">
             <!-- 5 Master Score Blocks + Average -->
             <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="base_conversion" data-cat="base_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
-                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Base<br>conversion</span>
+            <div data-cat="base_conversion" class="score-block flex flex-col items-center min-w-[100px] px-1">
+                <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Number<br>bases</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-base_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-base_conversion-all">0</span>)</span>
                 </span>
-            </button>
+            </div>
             </div>
             <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="binary_arithmetic" data-cat="binary_arithmetic" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
+            <div data-cat="binary_arithmetic" class="score-block flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Binary<br>arithmetic</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-binary_arithmetic-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-binary_arithmetic-all">0</span>)</span>
                 </span>
-            </button>
+            </div>
             </div>
             <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="unit_conversion" data-cat="unit_conversion" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
+            <div data-cat="unit_conversion" class="score-block flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Unit<br>conversion</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-unit_conversion-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-unit_conversion-all">0</span>)</span>
                 </span>
-            </button>
+            </div>
             </div>
             <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="operators" data-cat="operators" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
+            <div data-cat="operators" class="score-block flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Operators</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-operators-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-operators-all">0</span>)</span>
                 </span>
-            </button>
+            </div>
             </div>
             <div class="flex flex-col items-center">
-            <button type="button" data-scorecard="bit_patterns" data-cat="bit_patterns" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
+            <div data-cat="bit_patterns" class="score-block flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8">Bit<br>patterns</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-bit_patterns-today" class="score-val">0</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-bit_patterns-all">0</span>)</span>
                 </span>
-            </button>
             </div>
-            <button type="button" data-scorecard="average" data-cat="average" aria-haspopup="dialog" class="score-trigger flex flex-col items-center min-w-[100px] px-1">
+            </div>
+            <div data-cat="average" class="score-block flex flex-col items-center min-w-[100px] px-1">
                 <span class="text-[11px] font-semibold text-cat text-center leading-tight h-8"><br>Average</span>
                 <span class="text-2xl font-bold text-cat flex items-baseline gap-1">
                     <span id="score-avg-today" class="score-val">0.00</span>
                     <span class="text-base font-medium opacity-75">(<span id="score-avg-all">0.00</span>)</span>
             </span>
-            </button>
+            </div>
         </div>
 
-        <dialog id="scorecard" class="scorecard" aria-labelledby="scorecard-title">
-            <div class="scorecard-content">
-              <div class="scorecard-scroll">
+        <dialog id="scorecard" class="progress-dialog scroll-dialog scorecard" aria-labelledby="scorecard-title">
+              <div class="dialog-scroll">
                 <div class="scorecard-header">
                     <h2 id="scorecard-title"></h2>
                     <button type="button" id="scorecard-close" class="scorecard-close" aria-label="Close scorecard">&times;</button>
                 </div>
                 <div id="scorecard-scores"></div>
               </div>
-            </div>
         </dialog>
 
         <p id="storage-warning" role="alert" class="max-w-4xl mx-auto w-full text-sm text-red-700 hidden"></p>
@@ -1357,7 +1322,7 @@
         }
 
         MASTER_LABELS = {
-            "base_conversion": "Base conversion",
+            "base_conversion": "Number bases",
             "binary_arithmetic": "Binary arithmetic",
             "unit_conversion": "Unit conversion",
             "operators": "Operators",
@@ -1373,7 +1338,7 @@
             "binary_shift": "Binary shifts",
             "binary_subtraction": "Binary subtraction",
             "binary_multiplication": "Binary multiplication",
-            "unit_conversion": "Unit conversion",
+            "unit_conversion": "Data sizes",
             "data_transfer": "Data transfer",
             "number_of_values": "Number of values and highest value",
             "operators_div_mod": "DIV and MOD",
@@ -1707,8 +1672,6 @@
         # UI / DOM MANIPULATION
         # ==========================================
         scorecard_category = None
-        scorecard_anchor = None
-        scorecard_from_menu = False
 
         def scorecard_cell(row, tag, text, numeric=False):
             cell = document.createElement(tag)
@@ -1771,49 +1734,23 @@
             table.appendChild(body)
             container.appendChild(table)
 
-        def position_scorecard(*args):
-            if scorecard_category is None:
-                return
+        def open_menu_scorecard(e):
+            global scorecard_category
+            close_menus()
+            document.getElementById("profile-button").focus()
+            scorecard_category = "average"
             dialog = document.getElementById("scorecard")
-            rect = scorecard_anchor.getBoundingClientRect()
-            width = min(680 if scorecard_category == "average" else 440, window.innerWidth - 32)
-            left = max(16, min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 16))
-            top = max(16, min(rect.bottom + 12, window.innerHeight - 120))
-            dialog.style.setProperty("--scorecard-left", str(left) + "px")
-            dialog.style.setProperty("--scorecard-top", str(top) + "px")
-            dialog.style.setProperty("--scorecard-arrow", str(max(16, min(width - 16, rect.left + rect.width / 2 - left))) + "px")
-
-        def show_scorecard(category, anchor, from_menu=False):
-            global scorecard_category, scorecard_anchor, scorecard_from_menu
-            scorecard_category = category
-            scorecard_anchor = anchor
-            scorecard_from_menu = from_menu
-            dialog = document.getElementById("scorecard")
-            dialog.classList.toggle("scorecard-wide", scorecard_category == "average")
             render_scorecard()
-            position_scorecard()
             dialog.showModal()
             document.getElementById("scorecard-close").focus()
-
-        def open_scorecard(e):
-            show_scorecard(e.currentTarget.getAttribute("data-scorecard"), e.currentTarget)
-
-        def open_menu_scorecard(e):
-            close_menus()
-            anchor = document.getElementById("profile-button")
-            anchor.focus()
-            show_scorecard("average", anchor, True)
 
         def close_scorecard(e):
             document.getElementById("scorecard").close()
 
         def scorecard_closed(e):
-            global scorecard_category, scorecard_anchor, scorecard_from_menu
-            if scorecard_from_menu:
-                document.getElementById("profile-button").focus()
+            global scorecard_category
+            document.getElementById("profile-button").focus()
             scorecard_category = None
-            scorecard_anchor = None
-            scorecard_from_menu = False
 
         def scorecard_backdrop_click(e):
             dialog = document.getElementById("scorecard")
@@ -1851,8 +1788,8 @@
                 
                 document.getElementById("score-" + mc + "-today").innerText = str(daily_master[mc])
                 document.getElementById("score-" + mc + "-all").innerText = str(all_time_master[mc])
-                score_trigger = document.querySelector('[data-scorecard="' + mc + '"]')
-                score_trigger.classList.toggle("focus-muted", bool(state.focus_category and state.focus_category != mc))
+                score_block = document.querySelector('.score-block[data-cat="' + mc + '"]')
+                score_block.classList.toggle("focus-muted", bool(state.focus_category and state.focus_category != mc))
                 focus_trigger = document.querySelector('[data-focus="' + mc + '"]')
                 if focus_trigger:
                     focus_trigger.setAttribute("aria-pressed", "true" if state.focus_category == mc and not state.focus_question_type else "false")
@@ -2212,9 +2149,9 @@
             state.firstname = firstname
             state.lastname = lastname
             set_advanced(document.getElementById("toggle-advanced-profile").checked)
-            persisted = save_state()
+            save_state()
             refresh_dashboard()
-            status.textContent = "Profile saved." if persisted else "Profile changed for this session; browser storage is unavailable."
+            document.getElementById("settings-modal").close()
 
         def save_backup(e):
             close_menus()
@@ -2340,7 +2277,7 @@
              "kind": "categories", "categories": ("binary_arithmetic", "bit_patterns"), "target": 25},
             {"id": "johnson", "track": "achievement", "person": "Katherine Johnson", "title": "Number Navigator",
              "bio": "Katherine Johnson was a mathematician whose calculations supported NASA's early crewed spaceflights.",
-             "requirement": "25 correct Base conversion answers.",
+             "requirement": "25 correct Number bases answers.",
              "kind": "categories", "categories": ("base_conversion",), "target": 25},
             {"id": "boole", "track": "achievement", "person": "George Boole", "title": "Logical Thinker",
              "bio": "George Boole was a mathematician whose algebra of logic became a foundation of digital computing.",
@@ -2390,18 +2327,21 @@
                 result[badge["id"]] = {"earned": earned, "progress": progress}
             return result
 
-        def badge_button(badge, newly_earned=False):
+        def badge_portrait(badge):
+            portrait = document.createElement("img")
+            portrait.className = "badge-portrait"
+            portrait.setAttribute("src", "./badge-images/" + BADGE_PORTRAITS[badge["id"]])
+            portrait.setAttribute("alt", "")
+            return portrait
+
+        def badge_button(badge, newly_earned=False, show_portrait=True):
             button = document.createElement("button")
             button.type = "button"
             button.className = "badge-card" + (" new-badge" if newly_earned else "")
             button.setAttribute("data-badge", badge["id"])
             button.setAttribute("aria-haspopup", "dialog")
-            if badge["id"] in BADGE_PORTRAITS:
-                portrait = document.createElement("img")
-                portrait.className = "badge-portrait"
-                portrait.setAttribute("src", "./badge-images/" + BADGE_PORTRAITS[badge["id"]])
-                portrait.setAttribute("alt", "")
-                button.appendChild(portrait)
+            if show_portrait:
+                button.appendChild(badge_portrait(badge))
             name = document.createElement("strong")
             name.textContent = badge["person"]
             title = document.createElement("span")
@@ -2424,19 +2364,23 @@
                     entry = document.createElement("div")
                     entry.id = "collection-" + badge_id
                     entry.className = "badge-list-entry"
+                    entry.appendChild(badge_portrait(badge))
+                    content = document.createElement("div")
+                    content.className = "badge-list-content"
                     heading = document.createElement("div")
                     heading.className = "badge-list-heading"
-                    entry.appendChild(heading)
+                    content.appendChild(heading)
                     detail = document.createElement("p")
                     detail.className = "badge-list-progress"
-                    entry.appendChild(detail)
+                    content.appendChild(detail)
+                    entry.appendChild(content)
                     container.appendChild(entry)
                 heading = entry.querySelector(".badge-list-heading")
                 earned = progress[badge_id]["earned"]
                 if heading.getAttribute("data-earned") != ("yes" if earned else "no"):
                     heading.textContent = ""
                     if earned:
-                        heading.appendChild(badge_button(badge))
+                        heading.appendChild(badge_button(badge, show_portrait=False))
                     else:
                         heading.textContent = badge["person"] + " · " + badge["title"] + " (locked)"
                     heading.setAttribute("data-earned", "yes" if earned else "no")
@@ -2509,6 +2453,7 @@
                 return
             badge = BADGES_BY_ID[button.getAttribute("data-badge")]
             document.getElementById("badge-detail-title").textContent = badge["person"] + " · " + badge["title"]
+            document.getElementById("badge-detail-portrait").setAttribute("src", "./badge-images/" + BADGE_PORTRAITS[badge["id"]])
             document.getElementById("badge-detail-biography").textContent = badge["bio"]
             document.getElementById("badge-detail-requirement").textContent = "Earned for: " + badge["requirement"]
             document.getElementById("badge-detail-modal").showModal()
@@ -2537,16 +2482,11 @@
 
         # Wire up buttons and toggles
         badge_notice_timeout_proxy = hold_proxy(create_proxy(dismiss_badge_notice))
-        scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
-        for trigger in document.querySelectorAll("[data-scorecard]"):
-            trigger.addEventListener("click", scorecard_open_proxy)
         document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_focus)))
         document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_scorecard_focus)))
         document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
         document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
         document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
-        window.addEventListener("resize", hold_proxy(create_proxy(position_scorecard)))
-        window.addEventListener("scroll", hold_proxy(create_proxy(position_scorecard)))
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
         document.getElementById("btn-start-scratch").addEventListener("click", hold_proxy(create_proxy(show_start_form)))
         document.getElementById("btn-back-welcome").addEventListener("click", hold_proxy(create_proxy(show_welcome)))

@@ -57,7 +57,7 @@ async function setAdvancedMode(page, checked) {
   if (checked) await checkbox.check();
   else await checkbox.uncheck();
   await settings.locator("#btn-save-name").click();
-  await settings.locator("#settings-close").click();
+  await expect(settings).toBeHidden();
 }
 
 module.exports = {

@@ -11,9 +11,9 @@ site, available [here](https://0x.sunsquashed.uk/).
 - offers a new session or loading progress from a file on the welcome screen;
   starting from scratch prompts for firstname, lastname and advanced questions
 - provides programmatically-generated questions on:
-    - Base conversion, including number of values and highest representable value
+    - Number bases, including base conversion, number of values and highest representable value
     - Binary arithmetic
-    - Unit conversion
+    - Unit conversion, including data sizes and data transfer
     - Operators
     - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
 
@@ -29,8 +29,8 @@ site, available [here](https://0x.sunsquashed.uk/).
   question correctly
 - shows a sticky top dashboard with the student's name and scores
   for today and all time
-- opens a scorecard from each dashboard score, showing today and all-time
-  counts by question type; the average scorecard includes all categories
+- opens a centered scorecard from the profile menu, showing today and all-time
+  counts by question type across all categories
 - shows advanced question types after standard types in scorecards only when
   advanced questions are enabled; category totals still include all scores
 - saves the students's name and scores to local storage
@@ -47,7 +47,7 @@ site, available [here](https://0x.sunsquashed.uk/).
   left of the questions and achievement badges to the right on wide screens;
   open **Badges** in the progress menu to see the full collection on any screen
 - clears usage history as well as scores when starting over
-- includes previously saved number-of-values scores in base conversion totals;
+- includes previously saved number-of-values scores in Number bases totals;
   the average is calculated across the five master categories
 
 Usage history starts when this feature first records an interaction; earlier
@@ -66,11 +66,11 @@ Donald Knuth require at least 5 minutes on 3, 10 and 30 different local days,
 plus 5, 15 and 50 answers respectively. Days do not need to be consecutive.
 Correct answers are counted all-time, not necessarily on each practice day.
 
-Achievement badges reward 10 and 100 answers overall, 25 in Base conversion,
+Achievement badges reward 10 and 100 answers overall, 25 in Number bases,
 25 in Operators, 25 across Binary arithmetic and Bit patterns, and 10 in each
 of the five categories. The collection shows the requirements and progress for
 locked badges. Select an earned badge to read about its namesake and criterion.
-Portraits are shown on earned badges where an image is available.
+Portraits are shown alongside badges in the collection and on earned badges.
 New awards are announced and briefly animated, respecting reduced-motion
 preferences. Existing and restored awards appear without celebrations. Backups
 preserve the underlying data; clearing progress removes the awards. Earlier
