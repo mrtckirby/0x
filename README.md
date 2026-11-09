@@ -66,6 +66,7 @@ Achievement badges reward 10 and 100 answers overall, 25 in Base conversion,
 25 in Operators, 25 across Binary arithmetic and Bit patterns, and 10 in each
 of the five categories. The collection shows the requirements and progress for
 locked badges. Select an earned badge to read about its namesake and criterion.
+Portraits are shown on earned badges where an image is available.
 New awards are announced and briefly animated, respecting reduced-motion
 preferences. Existing and restored awards appear without celebrations. Backups
 preserve the underlying data; clearing progress removes the awards. Earlier

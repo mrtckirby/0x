@@ -138,6 +138,10 @@
         }
         .badge-card:hover { background: #e5e7eb; }
         .badge-card:focus-visible, .badge-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .badge-portrait {
+            display: block; width: 112px; max-width: 100%; height: auto;
+            aspect-ratio: 1; object-fit: contain; margin: 0 auto 0.5rem;
+        }
         .badge-card strong, .badge-card span { display: block; }
         .badge-card span { font-size: 0.8rem; margin-top: 0.2rem; }
         .badge-card.new-badge::after {
@@ -2149,7 +2153,7 @@
             refresh_dashboard()
             refresh_usage_display()
             refresh_badges()
-            document.getElementById("badge-notice").classList.add("hidden")
+            dismiss_badge_notice()
             document.getElementById("settings-firstname").value = state.firstname
             document.getElementById("settings-lastname").value = state.lastname
             document.getElementById("settings-status").textContent = ""
@@ -2243,6 +2247,11 @@
              "requirement": "100 correct answers across all categories.", "kind": "total", "target": 100},
         )
         BADGES_BY_ID = {badge["id"]: badge for badge in BADGES}
+        BADGE_PORTRAITS = {
+            "ada": "lovelace.png", "hopper": "hopper.png", "hamilton": "hamilton.png", "knuth": "knuth.png",
+            "turing": "turing.png", "shannon": "shannon.png", "johnson": "johnson.png",
+            "boole": "boole.png", "jones": "sparckjones.png", "dijkstra": "dijkstra.png",
+        }
         known_badges = set()
         badge_notice_timer = None
 
@@ -2280,6 +2289,12 @@
             button.className = "badge-card" + (" new-badge" if newly_earned else "")
             button.setAttribute("data-badge", badge["id"])
             button.setAttribute("aria-haspopup", "dialog")
+            if badge["id"] in BADGE_PORTRAITS:
+                portrait = document.createElement("img")
+                portrait.className = "badge-portrait"
+                portrait.setAttribute("src", "./badge-images/" + BADGE_PORTRAITS[badge["id"]])
+                portrait.setAttribute("alt", "")
+                button.appendChild(portrait)
             name = document.createElement("strong")
             name.textContent = badge["person"]
             title = document.createElement("span")
@@ -2401,7 +2416,7 @@
         def close_badge_detail(e):
             document.getElementById("badge-detail-modal").close()
 
-        def dismiss_badge_notice(e):
+        def dismiss_badge_notice(e=None):
             global badge_notice_timer
             if badge_notice_timer is not None:
                 window.clearTimeout(badge_notice_timer)
