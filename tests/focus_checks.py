@@ -205,6 +205,10 @@ events.clear()
 ns["handle_scorecard_focus"](types.SimpleNamespace(target=Button("binary_shift")))
 ns["handle_focus"](types.SimpleNamespace(target=Button("base_conversion")))
 assert (state.focus_category, state.focus_question_type) == ("base_conversion", None)
+events.clear()
+ns["toggle_menu"](types.SimpleNamespace(currentTarget=types.SimpleNamespace(id="focus-button")))
+assert (state.focus_category, state.focus_question_type) == (None, None)
+assert events == ["close", "replace", "refresh", "save"]
 state.focus_category = "binary_arithmetic"
 state.focus_question_type = "binary_subtraction"
 state.advanced_mode = True

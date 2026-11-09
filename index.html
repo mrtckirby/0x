@@ -3,6 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        (() => {
+            const key = "0x_theme";
+            const system = window.matchMedia("(prefers-color-scheme: dark)");
+            let preference = "system";
+            try {
+                const saved = localStorage.getItem(key);
+                if (["system", "light", "dark"].includes(saved)) preference = saved;
+            } catch (error) {
+                console.warn("Could not read the theme preference:", error);
+            }
+            const apply = () => {
+                document.documentElement.dataset.theme = preference === "system"
+                    ? (system.matches ? "dark" : "light") : preference;
+            };
+            window.getThemePreference = () => preference;
+            window.setThemePreference = value => {
+                if (!["system", "light", "dark"].includes(value)) return false;
+                preference = value;
+                apply();
+                try {
+                    localStorage.setItem(key, value);
+                    return true;
+                } catch (error) {
+                    console.warn("Could not save the theme preference:", error);
+                    return false;
+                }
+            };
+            system.addEventListener("change", apply);
+            apply();
+        })();
+    </script>
     
     <title>0x</title>
 
@@ -73,6 +105,7 @@
         .menu-button { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
         .menu-button:hover { background: #d1d5db; }
         .menu-button svg { width: 1.2rem; height: 1.2rem; }
+        .menu-button svg.hidden { display: none; }
         .menu-panel { position: absolute; top: 100%; z-index: 2; width: min(320px, calc(100vw - 2rem)); max-height: 65vh; overflow: auto; padding: 0.4rem; background: white; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
         #focus-menu { left: 0; }
         #profile-menu { right: 0; }
@@ -177,6 +210,36 @@
         @media (prefers-reduced-motion: reduce) {
             .badge-card.new-badge::after { animation: none; content: none; }
         }
+        html[data-theme="dark"] { color-scheme: dark; }
+        html[data-theme="dark"] body { background: #111827; color: #f3f4f6; }
+        html[data-theme="dark"] .bg-gray-100 { background-color: #1f2937; }
+        html[data-theme="dark"] .bg-white, html[data-theme="dark"] .progress-dialog,
+        html[data-theme="dark"] .menu-panel, html[data-theme="dark"] .badge-notice { background-color: #1f2937; color: #f3f4f6; }
+        html[data-theme="dark"] .menu-ribbon { background: #374151; }
+        html[data-theme="dark"] .menu-button:hover, html[data-theme="dark"] .menu-panel button:hover,
+        html[data-theme="dark"] .menu-panel summary:hover { background: #4b5563; }
+        html[data-theme="dark"] .progress-action, html[data-theme="dark"] .badge-card,
+        html[data-theme="dark"] .bg-gray-200 { background: #374151; color: #f3f4f6; }
+        html[data-theme="dark"] .progress-action:hover, html[data-theme="dark"] .badge-card:hover,
+        html[data-theme="dark"] .hover\:bg-gray-300:hover { background: #4b5563; }
+        html[data-theme="dark"] input[type="text"], html[data-theme="dark"] textarea,
+        html[data-theme="dark"] select { background: #111827; color: #f3f4f6; }
+        html[data-theme="dark"] input::placeholder { color: #9ca3af; }
+        html[data-theme="dark"] .text-gray-600, html[data-theme="dark"] .text-gray-700,
+        html[data-theme="dark"] .text-gray-800, html[data-theme="dark"] .text-gray-900,
+        html[data-theme="dark"] .scorecard .advanced-label { color: #d1d5db; }
+        html[data-theme="dark"] .text-red-500, html[data-theme="dark"] .text-red-600,
+        html[data-theme="dark"] .text-red-700, html[data-theme="dark"] .progress-action-danger { color: #fca5a5; }
+        html[data-theme="dark"] .text-green-900 { color: #86efac; }
+        html[data-theme="dark"] .border-gray-200, html[data-theme="dark"] .border-gray-300,
+        html[data-theme="dark"] .scorecard th, html[data-theme="dark"] .scorecard td,
+        html[data-theme="dark"] .badge-list-entry { border-color: #4b5563; }
+        html[data-theme="dark"] [data-cat="base_conversion"] { --cat-text: #7dd3fc; }
+        html[data-theme="dark"] [data-cat="binary_arithmetic"] { --cat-text: #fdba74; }
+        html[data-theme="dark"] [data-cat="unit_conversion"] { --cat-text: #6ee7b7; }
+        html[data-theme="dark"] [data-cat="operators"] { --cat-text: #f9a8d4; }
+        html[data-theme="dark"] [data-cat="bit_patterns"] { --cat-text: #7dd3fc; }
+        html[data-theme="dark"] [data-cat="average"] { --cat-text: #e5e7eb; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 m-0 p-0 flex flex-col min-h-screen">
@@ -238,6 +301,14 @@
             <label class="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" id="toggle-advanced-profile" class="w-4 h-4"> Include advanced questions
             </label>
+            <div>
+                <label for="settings-theme" class="block text-sm font-semibold">Theme</label>
+                <select id="settings-theme" class="w-full p-2 border border-gray-300 rounded">
+                    <option value="system">System default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
             <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save</button>
             <p id="settings-status" role="status" aria-live="polite" class="text-sm"></p>
         </div>
@@ -295,7 +366,7 @@
     <div class="sticky top-0 w-full bg-gray-100 border-b border-gray-300 px-4 py-2 z-40 shadow-sm flex flex-col gap-3">
         <nav aria-label="Main menu" class="menu-ribbon flex justify-between items-center w-full">
             <div class="menu-wrap">
-                <button type="button" id="focus-button" class="menu-button" aria-expanded="false" aria-controls="focus-menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>Focus on...</button>
+                <button type="button" id="focus-button" class="menu-button" aria-expanded="false" aria-controls="focus-menu"><svg id="focus-search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><svg id="focus-clear-icon" class="hidden" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5 5 19"/></svg><span id="focus-button-label">Focus on...</span></button>
                 <div id="focus-menu" class="menu-panel hidden"></div>
             </div>
             <div class="menu-wrap">
@@ -1759,6 +1830,17 @@
                 dialog.close()
 
         def refresh_dashboard():
+            focused = bool(state.focus_category)
+            focus_button = document.getElementById("focus-button")
+            document.getElementById("focus-button-label").textContent = "Clear focus" if focused else "Focus on..."
+            document.getElementById("focus-search-icon").classList.toggle("hidden", focused)
+            document.getElementById("focus-clear-icon").classList.toggle("hidden", not focused)
+            if focused:
+                focus_button.removeAttribute("aria-expanded")
+                focus_button.removeAttribute("aria-controls")
+            else:
+                focus_button.setAttribute("aria-controls", "focus-menu")
+                focus_button.setAttribute("aria-expanded", "false" if document.getElementById("focus-menu").classList.contains("hidden") else "true")
             all_time_master = {mc: 0 for mc in MASTER_CATEGORIES}
             daily_master = {mc: 0 for mc in MASTER_CATEGORIES}
             
@@ -1988,10 +2070,20 @@
         def close_menus():
             for name in ("focus", "profile"):
                 document.getElementById(name + "-menu").classList.add("hidden")
-                document.getElementById(name + "-button").setAttribute("aria-expanded", "false")
+                button = document.getElementById(name + "-button")
+                if button.hasAttribute("aria-expanded"):
+                    button.setAttribute("aria-expanded", "false")
 
         def toggle_menu(e):
             button = e.currentTarget
+            if button.id == "focus-button" and state.focus_category:
+                state.focus_category = None
+                state.focus_question_type = None
+                close_menus()
+                replace_questions()
+                refresh_dashboard()
+                save_state()
+                return
             menu = document.getElementById(button.getAttribute("aria-controls"))
             opening = menu.classList.contains("hidden")
             close_menus()
@@ -2118,6 +2210,7 @@
             document.getElementById("settings-firstname").value = state.firstname
             document.getElementById("settings-lastname").value = state.lastname
             document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
+            document.getElementById("settings-theme").value = window.getThemePreference()
             document.getElementById("settings-status").textContent = ""
             document.getElementById("backup-status").textContent = ""
             document.getElementById("settings-modal").showModal()
@@ -2149,6 +2242,8 @@
             state.firstname = firstname
             state.lastname = lastname
             set_advanced(document.getElementById("toggle-advanced-profile").checked)
+            if not window.setThemePreference(document.getElementById("settings-theme").value):
+                storage_warning("Could not save the theme preference. It may be lost on reload.")
             save_state()
             refresh_dashboard()
             document.getElementById("settings-modal").close()
