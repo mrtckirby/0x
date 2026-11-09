@@ -128,6 +128,52 @@
         .scorecard .category-heading th { padding-top: 1rem; color: var(--cat-text); }
         .scorecard .advanced-label { color: #6b7280; font-size: 0.75rem; }
         .scorecard .focus-trigger { display: block; margin-top: 0.25rem; }
+        .practice-layout { max-width: 90rem; margin: auto; }
+        .badge-column { display: none; }
+        .badge-column h2 { font-size: 0.8rem; font-weight: bold; margin-bottom: 0.75rem; }
+        .badge-card {
+            display: block; position: relative; width: 100%; margin-bottom: 0.75rem;
+            border: 1px solid #9ca3af; border-radius: 0.5rem; padding: 0.7rem;
+            background: #f9fafb; color: #1f2937; text-align: left; cursor: pointer;
+        }
+        .badge-card:hover { background: #e5e7eb; }
+        .badge-card:focus-visible, .badge-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        .badge-portrait {
+            display: block; width: 112px; max-width: 100%; height: auto;
+            aspect-ratio: 1; object-fit: contain; margin: 0 auto 0.5rem;
+        }
+        .badge-card strong, .badge-card span { display: block; }
+        .badge-card span { font-size: 0.8rem; margin-top: 0.2rem; }
+        .badge-card.new-badge::after {
+            content: "✦"; position: absolute; right: 0.3rem; top: 0;
+            color: #b45309; font-size: 1.8rem; pointer-events: none;
+            text-shadow: -1.2rem -0.5rem 0 #b45309, 0.7rem 0.8rem 0 #b45309, -0.9rem 1rem 0 #b45309;
+            animation: badge-burst 1.2s ease-out forwards;
+        }
+        @keyframes badge-burst {
+            0% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+            30% { opacity: 1; transform: scale(1.5) rotate(45deg); }
+            100% { opacity: 0; transform: scale(2.2) rotate(90deg); }
+        }
+        .badge-list-entry { border-top: 1px solid #d1d5db; padding: 0.75rem 0; }
+        .badge-list-entry p { font-size: 0.85rem; margin-top: 0.25rem; }
+        .badge-list-entry .badge-card { margin-bottom: 0; }
+        .badge-notice {
+            position: fixed; bottom: 1rem; right: 1rem; z-index: 45;
+            max-width: min(24rem, calc(100vw - 2rem)); padding: 0.75rem;
+            background: white; border: 1px solid #6b7280; border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        @media (min-width: 1100px) {
+            .practice-layout { display: grid; grid-template-columns: 175px minmax(0, 1fr) 175px; gap: 1.5rem; align-items: start; }
+            #engagement-badges { grid-column: 1; grid-row: 1; }
+            #questions-container { grid-column: 2; grid-row: 1; }
+            #achievement-badges { grid-column: 3; grid-row: 1; }
+            .badge-column:not(:empty) { display: block; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .badge-card.new-badge::after { animation: none; content: none; }
+        }
         @media (min-width: 768px) {
             .scorecard {
                 inset: auto;
@@ -209,6 +255,7 @@
             </div>
             <button type="button" id="btn-save-name" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Save name</button>
             <p id="settings-status" role="status" aria-live="polite" class="text-sm"></p>
+            <button type="button" id="btn-badges" class="progress-action text-sm">Badges...</button>
             <button type="button" id="btn-export" class="progress-action text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="12" height="16" rx="2"/><path d="M16 4V2H8v2M4 8v12a2 2 0 0 0 2 2h10"/></svg>Copy progress to clipboard...</button>
             <div id="export-result" class="hidden">
                 <p id="export-status" role="status" aria-live="polite" class="text-sm"></p>
@@ -222,6 +269,28 @@
             <button type="button" id="btn-start-over" class="progress-action progress-action-danger text-sm"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>Clear progress...</button>
         </div>
     </dialog>
+
+    <dialog id="badges-modal" aria-labelledby="badges-title" class="progress-dialog">
+        <div class="scorecard-header">
+            <h2 id="badges-title" class="text-xl font-bold">Your badges</h2>
+            <button type="button" id="badges-close" class="badge-close text-2xl" aria-label="Close badges">&times;</button>
+        </div>
+        <p class="text-sm mt-2">Practice days require at least five minutes of active use. Usage is approximate and history begins when tracking started.</p>
+        <div id="badge-collection"></div>
+    </dialog>
+
+    <dialog id="badge-detail-modal" aria-labelledby="badge-detail-title" class="progress-dialog">
+        <div class="scorecard-header">
+            <h2 id="badge-detail-title" class="text-xl font-bold"></h2>
+            <button type="button" id="badge-detail-close" class="badge-close text-2xl" aria-label="Close badge details">&times;</button>
+        </div>
+        <p id="badge-detail-biography" class="mt-4"></p>
+        <p id="badge-detail-requirement" class="mt-4"></p>
+    </dialog>
+    <div id="badge-notice" class="badge-notice hidden">
+        <span id="badge-announcement" role="status" aria-live="polite"></span>
+        <button type="button" id="badge-notice-close" class="badge-close" aria-label="Dismiss badge notification">&times;</button>
+    </div>
 
     <dialog id="copy-success-modal" aria-labelledby="copy-success-message" class="progress-dialog">
         <p id="copy-success-message">Progress copied successfully! Please paste it into your instructor's form.</p>
@@ -338,8 +407,12 @@
 
     <!-- Main Content Area -->
     <div class="flex-1 overflow-auto p-4 md:p-8 pb-32">
-        <div class="max-w-4xl mx-auto flex flex-col gap-4" id="questions-container">
-            <!-- Questions dynamically injected here -->
+        <div class="practice-layout">
+            <aside id="engagement-badges" class="badge-column" aria-label="Engagement badges"></aside>
+            <div class="max-w-4xl mx-auto w-full flex flex-col gap-4" id="questions-container">
+                <!-- Questions dynamically injected here -->
+            </div>
+            <aside id="achievement-badges" class="badge-column" aria-label="Achievement badges"></aside>
         </div>
     </div>
 
@@ -1875,6 +1948,7 @@
                     
                     new_levels = get_current_levels()
                     refresh_dashboard()
+                    refresh_badges(True)
                     
                     if new_levels[master] > old_levels[master]:
                         trigger_pop("score-" + master + "-today")
@@ -2078,6 +2152,8 @@
             replace_questions()
             refresh_dashboard()
             refresh_usage_display()
+            refresh_badges()
+            dismiss_badge_notice()
             document.getElementById("settings-firstname").value = state.firstname
             document.getElementById("settings-lastname").value = state.lastname
             document.getElementById("settings-status").textContent = ""
@@ -2130,7 +2206,230 @@
             refresh_dashboard()
             refresh_usage_display()
 
+        # Badge awards are derived from the same data used by scores and backups.
+        BADGES = (
+            {"id": "ada", "track": "engagement", "person": "Ada Lovelace", "title": "First Notes",
+             "bio": "Ada Lovelace described an algorithm for Charles Babbage's proposed Analytical Engine and recognised that such machines could work with more than numbers.",
+             "requirement": "10 minutes of active time and 2 correct answers.",
+             "kind": "minutes", "target": 10, "answers": 2},
+            {"id": "hopper", "track": "engagement", "person": "Grace Hopper", "title": "Keep Iterating",
+             "bio": "Grace Hopper was a computer scientist and US Navy officer who helped develop early compilers and promoted machine-independent programming languages.",
+             "requirement": "At least 5 minutes of active time on each of 3 different days and 5 correct answers.",
+             "kind": "days", "target": 3, "answers": 5},
+            {"id": "hamilton", "track": "engagement", "person": "Margaret Hamilton", "title": "Steady Progress",
+             "bio": "Margaret Hamilton led the team that developed onboard flight software for NASA's Apollo missions and helped establish software engineering as a discipline.",
+             "requirement": "At least 5 minutes of active time on each of 10 different days and 15 correct answers.",
+             "kind": "days", "target": 10, "answers": 15},
+            {"id": "knuth", "track": "engagement", "person": "Donald Knuth", "title": "Deep Practice",
+             "bio": "Donald Knuth is a computer scientist known for The Art of Computer Programming and foundational work on the analysis of algorithms.",
+             "requirement": "At least 5 minutes of active time on each of 30 different days and 50 correct answers.",
+             "kind": "days", "target": 30, "answers": 50},
+            {"id": "turing", "track": "achievement", "person": "Alan Turing", "title": "First Breakthrough",
+             "bio": "Alan Turing developed foundational ideas about computation and helped break encrypted messages during the Second World War.",
+             "requirement": "10 correct answers across all categories.", "kind": "total", "target": 10},
+            {"id": "shannon", "track": "achievement", "person": "Claude Shannon", "title": "Bitwise Thinker",
+             "bio": "Claude Shannon founded information theory and showed how Boolean algebra could be used to design digital circuits.",
+             "requirement": "25 correct answers across Binary arithmetic and Bit patterns.",
+             "kind": "categories", "categories": ("binary_arithmetic", "bit_patterns"), "target": 25},
+            {"id": "johnson", "track": "achievement", "person": "Katherine Johnson", "title": "Number Navigator",
+             "bio": "Katherine Johnson was a mathematician whose calculations supported NASA's early crewed spaceflights.",
+             "requirement": "25 correct Base conversion answers.",
+             "kind": "categories", "categories": ("base_conversion",), "target": 25},
+            {"id": "boole", "track": "achievement", "person": "George Boole", "title": "Logical Thinker",
+             "bio": "George Boole was a mathematician whose algebra of logic became a foundation of digital computing.",
+             "requirement": "25 correct Operators answers.",
+             "kind": "categories", "categories": ("operators",), "target": 25},
+            {"id": "jones", "track": "achievement", "person": "Karen Spärck Jones", "title": "Balanced Practice",
+             "bio": "Karen Spärck Jones was a computer scientist whose work on information retrieval helped shape modern search technology.",
+             "requirement": "10 correct answers in each of the five categories.", "kind": "balanced", "target": 10},
+            {"id": "dijkstra", "track": "achievement", "person": "Edsger Dijkstra", "title": "Problem Solver",
+             "bio": "Edsger Dijkstra was a computer scientist known for influential work on algorithms, programming and the shortest-path problem.",
+             "requirement": "100 correct answers across all categories.", "kind": "total", "target": 100},
+        )
+        BADGES_BY_ID = {badge["id"]: badge for badge in BADGES}
+        BADGE_PORTRAITS = {
+            "ada": "lovelace.png", "hopper": "hopper.png", "hamilton": "hamilton.png", "knuth": "knuth.png",
+            "turing": "turing.png", "shannon": "shannon.png", "johnson": "johnson.png",
+            "boole": "boole.png", "jones": "sparckjones.png", "dijkstra": "dijkstra.png",
+        }
+        known_badges = set()
+        badge_notice_timer = None
+
+        def badge_progress():
+            categories = {name: 0 for name in MASTER_CATEGORIES}
+            for q_type, count in state.all_time_scores.items():
+                if q_type in QUESTION_CONFIG:
+                    categories[QUESTION_CONFIG[q_type]["master"]] += count
+            total = sum(categories.values())
+            minutes = sum(state.daily_usage_ms.values()) // 60_000
+            days = sum(1 for duration in state.daily_usage_ms.values() if duration >= 300_000)
+            result = {}
+            for badge in BADGES:
+                kind, target = badge["kind"], badge["target"]
+                if kind in ("minutes", "days"):
+                    value = minutes if kind == "minutes" else days
+                    label = "Active minutes" if kind == "minutes" else "Practice days"
+                    progress = "%s: %s / %s; correct answers: %s / %s" % (
+                        label, min(value, target), target, min(total, badge["answers"]), badge["answers"])
+                    earned = value >= target and total >= badge["answers"]
+                elif kind == "balanced":
+                    progress = "; ".join("%s: %s / %s" % (MASTER_LABELS[category],
+                                         min(categories[category], target), target) for category in MASTER_CATEGORIES)
+                    earned = all(categories[category] >= target for category in MASTER_CATEGORIES)
+                else:
+                    value = total if kind == "total" else sum(categories[category] for category in badge["categories"])
+                    progress = "Correct answers: %s / %s" % (min(value, target), target)
+                    earned = value >= target
+                result[badge["id"]] = {"earned": earned, "progress": progress}
+            return result
+
+        def badge_button(badge, newly_earned=False):
+            button = document.createElement("button")
+            button.type = "button"
+            button.className = "badge-card" + (" new-badge" if newly_earned else "")
+            button.setAttribute("data-badge", badge["id"])
+            button.setAttribute("aria-haspopup", "dialog")
+            if badge["id"] in BADGE_PORTRAITS:
+                portrait = document.createElement("img")
+                portrait.className = "badge-portrait"
+                portrait.setAttribute("src", "./badge-images/" + BADGE_PORTRAITS[badge["id"]])
+                portrait.setAttribute("alt", "")
+                button.appendChild(portrait)
+            name = document.createElement("strong")
+            name.textContent = badge["person"]
+            title = document.createElement("span")
+            title.textContent = badge["title"]
+            button.appendChild(name)
+            button.appendChild(title)
+            return button
+
+        def render_badge_collection(progress):
+            container = document.getElementById("badge-collection")
+            for badge in BADGES:
+                badge_id = badge["id"]
+                entry = document.getElementById("collection-" + badge_id)
+                if not entry:
+                    if badge_id in ("ada", "turing"):
+                        track_heading = document.createElement("h3")
+                        track_heading.className = "font-bold mt-4"
+                        track_heading.textContent = "Engagement" if badge["track"] == "engagement" else "Achievement"
+                        container.appendChild(track_heading)
+                    entry = document.createElement("div")
+                    entry.id = "collection-" + badge_id
+                    entry.className = "badge-list-entry"
+                    heading = document.createElement("div")
+                    heading.className = "badge-list-heading"
+                    entry.appendChild(heading)
+                    detail = document.createElement("p")
+                    detail.className = "badge-list-progress"
+                    entry.appendChild(detail)
+                    container.appendChild(entry)
+                heading = entry.querySelector(".badge-list-heading")
+                earned = progress[badge_id]["earned"]
+                if heading.getAttribute("data-earned") != ("yes" if earned else "no"):
+                    heading.textContent = ""
+                    if earned:
+                        heading.appendChild(badge_button(badge))
+                    else:
+                        heading.textContent = badge["person"] + " · " + badge["title"] + " (locked)"
+                    heading.setAttribute("data-earned", "yes" if earned else "no")
+                detail = entry.querySelector(".badge-list-progress")
+                detail.textContent = badge["requirement"] if earned else badge["requirement"] + " " + progress[badge_id]["progress"]
+
+        def refresh_badges(celebrate=False):
+            global known_badges
+            progress = badge_progress()
+            earned = {badge_id for badge_id, item in progress.items() if item["earned"]}
+            new = earned - known_badges if celebrate else set()
+            for track in ("engagement", "achievement"):
+                container = document.getElementById(track + "-badges")
+                if not celebrate:
+                    for button in container.querySelectorAll(".new-badge"):
+                        button.classList.remove("new-badge")
+                current = {el.getAttribute("data-badge") for el in container.querySelectorAll("[data-badge]")}
+                wanted = {badge["id"] for badge in BADGES if badge["track"] == track and badge["id"] in earned}
+                if current - wanted:
+                    container.textContent = ""
+                    current = set()
+                if wanted and not current:
+                    heading = document.createElement("h2")
+                    heading.textContent = "Engagement" if track == "engagement" else "Achievement"
+                    container.appendChild(heading)
+                for badge in BADGES:
+                    if badge["id"] in wanted - current:
+                        following = next((other["id"] for other in BADGES
+                                          if other["track"] == track and other["id"] in current
+                                          and BADGES.index(other) > BADGES.index(badge)), None)
+                        button = badge_button(badge, badge["id"] in new)
+                        container.insertBefore(button, container.querySelector('[data-badge="' + following + '"]') if following else None)
+                        current.add(badge["id"])
+            if document.getElementById("badges-modal").open:
+                render_badge_collection(progress)
+            known_badges = earned
+            if new:
+                global badge_notice_timer
+                names = [badge["person"] + " · " + badge["title"] for badge in BADGES if badge["id"] in new]
+                document.getElementById("badge-notice").classList.remove("hidden")
+                document.getElementById("badge-announcement").textContent = "Badge earned: " + "; ".join(names)
+                if badge_notice_timer is not None:
+                    window.clearTimeout(badge_notice_timer)
+                badge_notice_timer = window.setTimeout(badge_notice_timeout_proxy, 8000)
+
+        def usage_and_badge_tick(e=None):
+            usage_tick(e)
+            if state.firstname:
+                refresh_badges(True)
+
+        def badge_visibility(e):
+            usage_visibility(e)
+            if state.firstname and not document.hidden:
+                refresh_badges(True)
+
+        def badge_pagehide(e):
+            usage_pause(e)
+
+        def open_badges(e):
+            checkpoint_usage(int(window.Date.now()))
+            refresh_badges(True)
+            render_badge_collection(badge_progress())
+            document.getElementById("settings-modal").close()
+            document.getElementById("badges-modal").showModal()
+            document.getElementById("badges-close").focus()
+
+        def open_badge_detail(e):
+            button = e.target.closest("[data-badge]")
+            if not button:
+                return
+            badge = BADGES_BY_ID[button.getAttribute("data-badge")]
+            document.getElementById("badge-detail-title").textContent = badge["person"] + " · " + badge["title"]
+            document.getElementById("badge-detail-biography").textContent = badge["bio"]
+            document.getElementById("badge-detail-requirement").textContent = "Earned for: " + badge["requirement"]
+            document.getElementById("badge-detail-modal").showModal()
+            document.getElementById("badge-detail-close").focus()
+
+        def close_badges(e):
+            document.getElementById("badges-modal").close()
+
+        def badges_closed(e):
+            document.getElementById("profile-button").focus()
+
+        def close_badge_detail(e):
+            document.getElementById("badge-detail-modal").close()
+
+        def dismiss_badge_notice(e=None):
+            global badge_notice_timer
+            if badge_notice_timer is not None:
+                window.clearTimeout(badge_notice_timer)
+                badge_notice_timer = None
+            document.getElementById("badge-notice").classList.add("hidden")
+
+        def reset_with_badges(e):
+            confirm_reset(e)
+            refresh_badges()
+            dismiss_badge_notice(e)
+
         # Wire up buttons and toggles
+        badge_notice_timeout_proxy = hold_proxy(create_proxy(dismiss_badge_notice))
         scorecard_open_proxy = hold_proxy(create_proxy(open_scorecard))
         for trigger in document.querySelectorAll("[data-scorecard]"):
             trigger.addEventListener("click", scorecard_open_proxy)
@@ -2146,6 +2445,14 @@
         document.getElementById("btn-start").onclick = hold_proxy(create_proxy(start_session))
         document.getElementById("profile-button").addEventListener("click", hold_proxy(create_proxy(open_settings)))
         document.getElementById("settings-close").addEventListener("click", hold_proxy(create_proxy(close_settings)))
+        document.getElementById("btn-badges").addEventListener("click", hold_proxy(create_proxy(open_badges)))
+        document.getElementById("badges-close").addEventListener("click", hold_proxy(create_proxy(close_badges)))
+        document.getElementById("badges-modal").addEventListener("close", hold_proxy(create_proxy(badges_closed)))
+        document.getElementById("badge-detail-close").addEventListener("click", hold_proxy(create_proxy(close_badge_detail)))
+        document.getElementById("badge-notice-close").addEventListener("click", hold_proxy(create_proxy(dismiss_badge_notice)))
+        badge_click_proxy = hold_proxy(create_proxy(open_badge_detail))
+        for badge_container in ("engagement-badges", "achievement-badges", "badge-collection"):
+            document.getElementById(badge_container).addEventListener("click", badge_click_proxy)
         document.getElementById("copy-success-ok").addEventListener("click", hold_proxy(create_proxy(close_copy_success)))
         document.getElementById("btn-load-backup").addEventListener("click", hold_proxy(create_proxy(choose_backup)))
         document.getElementById("btn-initial-load-backup").addEventListener("click", hold_proxy(create_proxy(choose_initial_backup)))
@@ -2161,7 +2468,7 @@
         
         document.getElementById("btn-start-over").onclick = hold_proxy(create_proxy(prompt_reset))
         document.getElementById("btn-cancel-reset").onclick = hold_proxy(create_proxy(cancel_reset))
-        document.getElementById("btn-confirm-reset").onclick = hold_proxy(create_proxy(confirm_reset))
+        document.getElementById("btn-confirm-reset").onclick = hold_proxy(create_proxy(reset_with_badges))
 
         if load_state():
             replace_questions()
@@ -2169,13 +2476,14 @@
         else:
             document.getElementById("name-modal").classList.remove("hidden")
 
+        refresh_badges()
         refresh_usage_display()
         usage_interaction_proxy = hold_proxy(create_proxy(usage_interaction))
         for event_name in ("pointerdown", "pointermove", "keydown", "input", "scroll"):
             document.addEventListener(event_name, usage_interaction_proxy, True)
-        document.addEventListener("visibilitychange", hold_proxy(create_proxy(usage_visibility)))
-        window.addEventListener("pagehide", hold_proxy(create_proxy(usage_pause)))
-        window.setInterval(hold_proxy(create_proxy(usage_tick)), 5000)
+        document.addEventListener("visibilitychange", hold_proxy(create_proxy(badge_visibility)))
+        window.addEventListener("pagehide", hold_proxy(create_proxy(badge_pagehide)))
+        window.setInterval(hold_proxy(create_proxy(usage_and_badge_tick)), 5000)
 
     </script>
 </body>

@@ -38,6 +38,10 @@ site, available [here](https://0x.sunsquashed.uk/).
   counts while the page is visible, up to one minute after the last pointer,
   keyboard, input or scroll interaction. Tracking starts on interaction after
   starting or returning to the page, and resumes on interaction after hiding it
+- awards badges named after computing pioneers for correct answers and for
+  active practice on different days. Earned engagement badges appear to the
+  left of the questions and achievement badges to the right on wide screens;
+  open **Badges** in the progress menu to see the full collection on any screen
 - clears usage history as well as scores when starting over
 - includes previously saved number-of-values scores in base conversion totals;
   the average is calculated across the five master categories
@@ -48,6 +52,25 @@ and saved periodically and when the page is hidden or closed. Browser shutdowns,
 clock changes and suspended tabs can make the figures approximate. Use one
 app tab at a time: separate tabs share storage but do not coordinate their
 in-memory scores or timers and can overwrite one another.
+
+## Badges
+
+Badge progress is calculated from locally stored all-time scores and usage.
+The engagement badges require both active time and correct answers: Ada Lovelace
+requires 10 minutes total and 2 answers; Grace Hopper, Margaret Hamilton and
+Donald Knuth require at least 5 minutes on 3, 10 and 30 different local days,
+plus 5, 15 and 50 answers respectively. Days do not need to be consecutive.
+Correct answers are counted all-time, not necessarily on each practice day.
+
+Achievement badges reward 10 and 100 answers overall, 25 in Base conversion,
+25 in Operators, 25 across Binary arithmetic and Bit patterns, and 10 in each
+of the five categories. The collection shows the requirements and progress for
+locked badges. Select an earned badge to read about its namesake and criterion.
+Portraits are shown on earned badges where an image is available.
+New awards are announced and briefly animated, respecting reduced-motion
+preferences. Existing and restored awards appear without celebrations. Backups
+preserve the underlying data; clearing progress removes the awards. Earlier
+usage that was not recorded cannot count towards engagement badges.
 
 ## Sharing and processing scores
 
