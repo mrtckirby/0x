@@ -32,6 +32,8 @@ for patch in (
     {"all_time_scores": {"base_conversion": True}}, {"daily_usage_ms": {"2026-02-30": 1}},
     {"usage_tracking_since": None}, {"focus_category": "bad"},
     {"focus_category": "operators", "focus_question_type": "binary_shift"},
+    {"focus_categories": ["operators", "bad"]}, {"focus_question_types": ["binary_subtraction"]},
+    {"focus_categories": ["operators", "operators"]}, {"focus_question_types": "binary_shift"},
     {"daily_usage_ms": []},
 ):
     bad = dict(data, **patch)

@@ -30,7 +30,7 @@ CATEGORIES = {
     "bit_patterns": (
         "ip_network_address", "ip_host_id", "ip_cidr_to_mask", "ip_mask_to_cidr",
         "ip_usable_hosts", "ip_min_subnet", "ip_broadcast_address",
-        "ip_first_last_host", "image_representation", "bitwise_operators",
+        "ip_first_last_host", "image_representation", "sound_representation", "bitwise_operators",
     ),
 }
 KNOWN_TYPES = {name for types in CATEGORIES.values() for name in types}

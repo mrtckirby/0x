@@ -111,7 +111,7 @@ assert [cell.textContent for cell in rows("average")[0].children] == ["Number ba
 state.advanced_mode = False
 rows("average")
 assert "include advanced scores" in doc.elements["scorecard-scores"].children[0].textContent
-state.focus_question_type = "binary_shift"
+state.focus_question_types = ["binary_shift"]
 for category in ("binary_arithmetic", "average"):
     assert all("data-focus-type" not in row.attributes for row in rows(category))
     assert all(child.tag != "button" for row in rows(category) for child in row.children)

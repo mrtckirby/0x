@@ -15,14 +15,14 @@ site, available [here](https://0x.sunsquashed.uk/).
     - Binary arithmetic
     - Unit conversion, including data sizes and data transfer
     - Operators
-    - Bit patterns: IPv4 addressing (advanced), representing images, and 4-bit bitwise operators
+    - Bit patterns: IPv4 addressing (advanced), representing images and sound, and 4-bit bitwise operators
 
 - gently favours topics with lower all-time correct counts when choosing new questions
-- the **Focus on** menu groups question types by master category and allows
-  focusing on a category or a single question type, replacing the current
-  questions; use **Clear focus** to return to all topics
-- focus is saved across reloads; turning off
-  advanced questions while focused on an advanced type returns to its master category
+- the **Focus on** menu allows multiple categories and question types to be
+  selected together; questions matching any selection are included. Use
+  **Clear focus** in the menu to return to all topics
+- focus is saved across reloads; turning off advanced questions removes advanced
+  type selections, or returns to their categories if no other selections remain
 - respects the advanced questions setting when choosing focused questions
 - validates answers reactively with no submit button
 - supplies a new question at the end of the list when a user answers a

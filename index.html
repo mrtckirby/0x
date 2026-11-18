@@ -568,8 +568,8 @@
                 self.firstname = ""
                 self.lastname = ""
                 self.advanced_mode = False
-                self.focus_category = None
-                self.focus_question_type = None
+                self.focus_categories = []
+                self.focus_question_types = []
                 self.last_active_date = ""
                 self.daily_scores = {}
                 self.all_time_scores = {}
@@ -843,8 +843,8 @@
             return QuestionDTO("twos_comp_den_to_bin", prompt, "binary_string", bin_str)
 
         def generate_real_denary_to_bin():
-            m_bits = random.choice([8, 9])
-            e_bits = random.choice([3, 4])
+            m_bits = 8
+            e_bits = 4
             
             is_negative = random.choice([True, False])
             if is_negative:
@@ -878,8 +878,8 @@
             return QuestionDTO("real_denary_to_bin", prompt, "real_binary", expected_bin)
 
         def generate_real_bin_to_denary():
-            m_bits = random.choice([8, 9])
-            e_bits = random.choice([3, 4])
+            m_bits = 8
+            e_bits = 4
             
             is_negative = random.choice([True, False])
             prefix = "10" if is_negative else "01"
@@ -1339,14 +1339,21 @@
             return [colours[r * w:(r + 1) * w] for r in range(h)]
 
         def generate_image_representation_question():
+            variant = random.choice(["depth", "size", "pixels", "colours"])
+            if variant == "colours":
+                depth = random.choice([1, 2, 3, 4, 8])
+                prompt = f"State the maximum number of different colours that can be used if a bitmap image has a colour depth of {depth} bits."
+                return QuestionDTO("image_representation", prompt, "integer", 2 ** depth)
             grid = generate_image_grid()
             h = len(grid)
             w = len(grid[0])
+            if variant == "pixels":
+                return QuestionDTO("image_representation", "How many pixels are in the image shown?", "integer", w * h, grid)
             distinct = len(set(c for row in grid for c in row))
             depth = (distinct - 1).bit_length()
             size_bits = depth * w * h
             common = " The image is uncompressed and the same number of bits is used for every pixel, using the minimum number of bits per pixel."
-            if random.random() < 0.5:
+            if variant == "depth":
                 prompt = "What is the minimum colour depth needed to represent the image shown?" + common + " Give your answer in bits."
                 return QuestionDTO("image_representation", prompt, "integer", depth, grid)
             if size_bits % 8 == 0 and random.random() < 0.5:
@@ -1355,6 +1362,18 @@
                 unit, expected = "bits", size_bits
             prompt = "What is the minimum file size of the image shown, ignoring any metadata?" + common + " Give your answer in " + unit + "."
             return QuestionDTO("image_representation", prompt, "integer", expected, grid)
+
+        def generate_sound_representation_question():
+            rate = random.choice([8000, 10000, 16000, 20000, 40000, 48000])
+            resolution = random.choice([4, 8, 16, 24])
+            duration = random.choice([5, 10, 20, 25, 50, 100])
+            unit = random.choice(["kilobyte", "megabyte"])
+            bits = rate * resolution * duration
+            prompt = (f"A mono sound recording lasts {duration} seconds. The sampling rate is {rate:,} Hz "
+                      f"and the sample resolution is {resolution} bits. What is the minimum file size, "
+                      f"ignoring metadata, in {UNIT_LABELS[unit]}? You may use either base-10 or base-2 conventions.")
+            return QuestionDTO("sound_representation", prompt, "number_list",
+                               [bits / UNIT_VALUES[unit], bits / UNIT_VALUES_BINARY[unit]])
 
         # ==========================================
         # QUESTION ROUTING & WEIGHTS
@@ -1388,7 +1407,8 @@
             "ip_min_subnet":         {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Minimum subnet for host requirement",  "generator": generate_ip_min_subnet_question},
             "ip_broadcast_address":  {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "Broadcast address (IP/CIDR)",          "generator": generate_ip_broadcast_question},
             "ip_first_last_host":    {"master": "bit_patterns", "advanced": True, "weight": 1.0, "label": "First/last usable host",               "generator": generate_ip_first_last_host_question},
-            "image_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing images (colour depth / file size)", "generator": generate_image_representation_question},
+            "image_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing images (pixels / colours / file size)", "generator": generate_image_representation_question},
+            "sound_representation":  {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "Representing sound (file size)", "generator": generate_sound_representation_question},
             "bitwise_operators":     {"master": "bit_patterns", "advanced": False, "weight": 1.0, "label": "4-bit bitwise operators", "generator": generate_bitwise_question},
         }
 
@@ -1448,9 +1468,9 @@
             for q_type, config in QUESTION_CONFIG.items():
                 if config["advanced"] and not state.advanced_mode:
                     continue
-                if state.focus_category and config["master"] != state.focus_category:
-                    continue
-                if state.focus_question_type and q_type != state.focus_question_type:
+                if ((state.focus_categories or state.focus_question_types)
+                        and config["master"] not in state.focus_categories
+                        and q_type not in state.focus_question_types):
                     continue
                 by_master.setdefault(config["master"], []).append(q_type)
 
@@ -1473,8 +1493,10 @@
                 "firstname": state.firstname,
                 "lastname": state.lastname,
                 "advanced_mode": state.advanced_mode,
-                "focus_category": state.focus_category,
-                "focus_question_type": state.focus_question_type,
+                "focus_category": None,
+                "focus_question_type": None,
+                "focus_categories": state.focus_categories,
+                "focus_question_types": state.focus_question_types,
                 "last_active_date": state.last_active_date,
                 "daily_scores": state.daily_scores,
                 "all_time_scores": state.all_time_scores,
@@ -1513,6 +1535,15 @@
                     or QUESTION_CONFIG[q_type]["master"] != category
                     or (QUESTION_CONFIG[q_type]["advanced"] and not data["advanced_mode"])):
                 raise ValueError("Invalid question focus in backup.")
+            for key, valid in (("focus_categories", MASTER_CATEGORIES), ("focus_question_types", QUESTION_CONFIG)):
+                if key in data and (not isinstance(data[key], list)
+                        or any(not isinstance(item, str) or item not in valid for item in data[key])
+                        or len(data[key]) != len(set(data[key]))):
+                    raise ValueError("Invalid focus selections in backup.")
+            if ("focus_categories" in data) != ("focus_question_types" in data):
+                raise ValueError("Incomplete focus selections in backup.")
+            if any(QUESTION_CONFIG[item]["advanced"] for item in data.get("focus_question_types", [])) and not data["advanced_mode"]:
+                raise ValueError("Advanced focus requires advanced mode.")
             for key in ("daily_scores", "all_time_scores", "daily_usage_ms"):
                 values = data[key]
                 if not isinstance(values, dict) or any(not isinstance(name, str) or not name
@@ -1544,14 +1575,20 @@
             focus_category = data.get("focus_category")
             if focus_category == "number_of_values":
                 focus_category = "base_conversion"
-            state.focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
+            focus_category = focus_category if focus_category in MASTER_CATEGORIES else None
             focus_type = data.get("focus_question_type")
             if (isinstance(focus_type, str) and focus_type in QUESTION_CONFIG
-                    and state.focus_category == QUESTION_CONFIG[focus_type]["master"]
+                    and focus_category == QUESTION_CONFIG[focus_type]["master"]
                     and (state.advanced_mode or not QUESTION_CONFIG[focus_type]["advanced"])):
-                state.focus_question_type = focus_type
+                state.focus_categories = []
+                state.focus_question_types = [focus_type]
             else:
-                state.focus_question_type = None
+                state.focus_categories = [focus_category] if focus_category else []
+                state.focus_question_types = []
+            if isinstance(data.get("focus_categories"), list) and isinstance(data.get("focus_question_types"), list):
+                state.focus_categories = list(dict.fromkeys(c for c in data["focus_categories"] if isinstance(c, str) and c in MASTER_CATEGORIES))
+                state.focus_question_types = list(dict.fromkeys(t for t in data["focus_question_types"]
+                    if isinstance(t, str) and t in QUESTION_CONFIG and (state.advanced_mode or not QUESTION_CONFIG[t]["advanced"])))
 
             document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
@@ -1830,17 +1867,11 @@
                 dialog.close()
 
         def refresh_dashboard():
-            focused = bool(state.focus_category)
+            focused = bool(state.focus_categories or state.focus_question_types)
             focus_button = document.getElementById("focus-button")
-            document.getElementById("focus-button-label").textContent = "Clear focus" if focused else "Focus on..."
-            document.getElementById("focus-search-icon").classList.toggle("hidden", focused)
-            document.getElementById("focus-clear-icon").classList.toggle("hidden", not focused)
-            if focused:
-                focus_button.removeAttribute("aria-expanded")
-                focus_button.removeAttribute("aria-controls")
-            else:
-                focus_button.setAttribute("aria-controls", "focus-menu")
-                focus_button.setAttribute("aria-expanded", "false" if document.getElementById("focus-menu").classList.contains("hidden") else "true")
+            document.getElementById("focus-button-label").textContent = "Focus on..." if not focused else "Focus on... (active)"
+            document.getElementById("focus-clear").disabled = not focused
+            focus_button.setAttribute("aria-expanded", "false" if document.getElementById("focus-menu").classList.contains("hidden") else "true")
             all_time_master = {mc: 0 for mc in MASTER_CATEGORIES}
             daily_master = {mc: 0 for mc in MASTER_CATEGORIES}
             
@@ -1871,12 +1902,13 @@
                 document.getElementById("score-" + mc + "-today").innerText = str(daily_master[mc])
                 document.getElementById("score-" + mc + "-all").innerText = str(all_time_master[mc])
                 score_block = document.querySelector('.score-block[data-cat="' + mc + '"]')
-                score_block.classList.toggle("focus-muted", bool(state.focus_category and state.focus_category != mc))
+                selected_master = mc in state.focus_categories or any(QUESTION_CONFIG[t]["master"] == mc for t in state.focus_question_types)
+                score_block.classList.toggle("focus-muted", focused and not selected_master)
                 focus_trigger = document.querySelector('[data-focus="' + mc + '"]')
                 if focus_trigger:
-                    focus_trigger.setAttribute("aria-pressed", "true" if state.focus_category == mc and not state.focus_question_type else "false")
+                    focus_trigger.setAttribute("aria-pressed", "true" if mc in state.focus_categories else "false")
             for trigger in document.querySelectorAll("[data-focus-type]"):
-                trigger.setAttribute("aria-pressed", "true" if state.focus_question_type == trigger.getAttribute("data-focus-type") else "false")
+                trigger.setAttribute("aria-pressed", "true" if trigger.getAttribute("data-focus-type") in state.focus_question_types else "false")
 
             if len(MASTER_CATEGORIES) > 0:
                 avg_all_time = total_all_time / len(MASTER_CATEGORIES)
@@ -2076,14 +2108,6 @@
 
         def toggle_menu(e):
             button = e.currentTarget
-            if button.id == "focus-button" and state.focus_category:
-                state.focus_category = None
-                state.focus_question_type = None
-                close_menus()
-                replace_questions()
-                refresh_dashboard()
-                save_state()
-                return
             menu = document.getElementById(button.getAttribute("aria-controls"))
             opening = menu.classList.contains("hidden")
             close_menus()
@@ -2107,6 +2131,11 @@
         def render_focus_menu():
             menu = document.getElementById("focus-menu")
             menu.replaceChildren()
+            clear = document.createElement("button")
+            clear.type = "button"
+            clear.id = "focus-clear"
+            clear.textContent = "Clear focus"
+            menu.appendChild(clear)
             for master in MASTER_CATEGORIES:
                 group = document.createElement("details")
                 summary = document.createElement("summary")
@@ -2133,9 +2162,10 @@
             if not button:
                 return
             category = button.getAttribute("data-focus")
-            state.focus_category = None if state.focus_category == category and not state.focus_question_type else category
-            state.focus_question_type = None
-            close_menus()
+            if category in state.focus_categories:
+                state.focus_categories.remove(category)
+            else:
+                state.focus_categories.append(category)
             replace_questions()
             refresh_dashboard()
             save_state()
@@ -2145,23 +2175,34 @@
             if not button:
                 return
             q_type = button.getAttribute("data-focus-type")
-            if state.focus_question_type == q_type:
-                state.focus_category = None
-                state.focus_question_type = None
+            if q_type in state.focus_question_types:
+                state.focus_question_types.remove(q_type)
             else:
-                state.focus_category = QUESTION_CONFIG[q_type]["master"]
-                state.focus_question_type = q_type
-            close_menus()
+                state.focus_question_types.append(q_type)
+            replace_questions()
+            refresh_dashboard()
+            save_state()
+
+        def clear_focus(e):
+            if not e.target.closest("#focus-clear"):
+                return
+            state.focus_categories = []
+            state.focus_question_types = []
             replace_questions()
             refresh_dashboard()
             save_state()
 
         def set_advanced(enabled):
+            was_advanced = state.advanced_mode
             state.advanced_mode = enabled
             document.getElementById("toggle-advanced-modal").checked = state.advanced_mode
             document.getElementById("toggle-advanced-profile").checked = state.advanced_mode
-            if not state.advanced_mode and state.focus_question_type and QUESTION_CONFIG[state.focus_question_type]["advanced"]:
-                state.focus_question_type = None
+            removed = [t for t in state.focus_question_types if not enabled and QUESTION_CONFIG[t]["advanced"]]
+            if removed:
+                state.focus_question_types = [t for t in state.focus_question_types if t not in removed]
+                if not state.focus_categories and not state.focus_question_types:
+                    state.focus_categories = list(dict.fromkeys(QUESTION_CONFIG[t]["master"] for t in removed))
+            if was_advanced and not enabled:
                 replace_questions()
             render_focus_menu()
             refresh_dashboard()
@@ -2323,8 +2364,8 @@
             state.firstname = ""
             state.lastname = ""
             state.advanced_mode = False
-            state.focus_category = None
-            state.focus_question_type = None
+            state.focus_categories = []
+            state.focus_question_types = []
             state.daily_scores = {}
             state.all_time_scores = {}
             state.daily_usage_ms = {}
@@ -2579,6 +2620,7 @@
         badge_notice_timeout_proxy = hold_proxy(create_proxy(dismiss_badge_notice))
         document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_focus)))
         document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(handle_scorecard_focus)))
+        document.getElementById("focus-menu").addEventListener("click", hold_proxy(create_proxy(clear_focus)))
         document.getElementById("scorecard-close").addEventListener("click", hold_proxy(create_proxy(close_scorecard)))
         document.getElementById("scorecard").addEventListener("click", hold_proxy(create_proxy(scorecard_backdrop_click)))
         document.getElementById("scorecard").addEventListener("close", hold_proxy(create_proxy(scorecard_closed)))
