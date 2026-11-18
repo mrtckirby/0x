@@ -39,7 +39,7 @@ for (const viewport of [{ width: 1280, height: 600 }, { width: 390, height: 600 
     await expect(dialog).toBeVisible();
     await expect(dialog.locator("#scorecard-title")).toHaveText("All scores");
     await expect(dialog.locator(".category-heading")).toHaveCount(5);
-    await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
+    await expect(dialog.locator("[data-question-type]")).toHaveCount(11);
     await expect(dialog.locator('.category-heading[data-cat="base_conversion"] th, .category-heading[data-cat="base_conversion"] td'))
       .toHaveText(["Number bases", "0", "17"]);
     await expect(dialog.locator('[data-question-type="base_conversion"] td')).toHaveText(["0", "7"]);
@@ -70,11 +70,11 @@ test("advanced mode reveals advanced types after standard types", async ({ page 
   await setAdvancedMode(page, true);
   await (await openProfileMenu(page)).locator("#btn-scorecard").click();
   const dialog = page.locator("#scorecard");
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(24);
+  await expect(dialog.locator("[data-question-type]")).toHaveCount(25);
   await expect(dialog.locator('[data-question-type="twos_comp_bin_to_den"] td')).toHaveText(["1", "4"]);
   const bitPatternRows = dialog.locator('.category-heading[data-cat="bit_patterns"] ~ [data-question-type]');
   await expect.poll(() => bitPatternRows.evaluateAll(rows => rows.map(row => row.getAttribute("data-question-type")))).toEqual([
-    "image_representation", "bitwise_operators", "ip_network_address", "ip_host_id",
+    "image_representation", "sound_representation", "bitwise_operators", "ip_network_address", "ip_host_id",
     "ip_cidr_to_mask", "ip_mask_to_cidr", "ip_usable_hosts", "ip_min_subnet",
     "ip_broadcast_address", "ip_first_last_host",
   ]);
@@ -82,5 +82,5 @@ test("advanced mode reveals advanced types after standard types", async ({ page 
   await page.locator("#scorecard-close").click();
   await setAdvancedMode(page, false);
   await (await openProfileMenu(page)).locator("#btn-scorecard").click();
-  await expect(dialog.locator("[data-question-type]")).toHaveCount(10);
+  await expect(dialog.locator("[data-question-type]")).toHaveCount(11);
 });

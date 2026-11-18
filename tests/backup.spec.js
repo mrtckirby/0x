@@ -88,7 +88,7 @@ test("edit name, download backup, reject invalid files and restore without confi
   await expect(modal.locator("#settings-lastname")).toHaveValue("Hopper");
   await expect(page.locator("#score-binary_arithmetic-all")).toHaveText("8");
   await expect(page.locator("#toggle-advanced-profile")).toBeChecked();
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_question_type)).toBe("binary_shift");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cs_maths_state")).focus_question_types)).toEqual(["binary_shift"]);
   await modal.locator("#settings-close").click();
   await page.reload();
   await expect(page.locator("#label-student")).toHaveText("Grace", { timeout: 120000 });

@@ -33,11 +33,13 @@ IP_TYPES = {
 }
 IMAGE_TYPE = "image_representation"
 BITWISE_TYPE = "bitwise_operators"
+SOUND_TYPE = "sound_representation"
 LABELS = [
     "Network address (IP/CIDR)", "Host ID (IP/CIDR)", "CIDR → dotted-decimal mask",
     "Dotted-decimal mask → CIDR", "Usable hosts in subnet", "Minimum subnet for host requirement",
     "Broadcast address (IP/CIDR)", "First/last usable host",
-    "Representing images (colour depth / file size)",
+    "Representing images (pixels / colours / file size)",
+    "Representing sound (file size)",
     "4-bit bitwise operators",
 ]
 
@@ -58,10 +60,11 @@ def mask(prefix):
 def check_config():
     assert "bit_patterns" in ns["MASTER_CATEGORIES"]
     ip = {k: v for k, v in CONFIG.items() if v["master"] == "bit_patterns"}
-    assert set(ip) == IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE}
+    assert set(ip) == IP_TYPES | {IMAGE_TYPE, SOUND_TYPE, BITWISE_TYPE}
     assert sorted(v["label"] for v in ip.values()) == sorted(LABELS)
     assert all(ip[k]["advanced"] for k in IP_TYPES)
     assert not ip[IMAGE_TYPE]["advanced"]
+    assert not ip[SOUND_TYPE]["advanced"]
     assert not ip[BITWISE_TYPE]["advanced"]
     assert len({v["weight"] for v in ip.values()}) == 1
 
@@ -71,10 +74,10 @@ def check_config():
         for _ in range(3000):
             seen.add(ns["choose_weighted_question_type"]())
         if advanced:
-            assert IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE} <= seen, (IP_TYPES | {IMAGE_TYPE, BITWISE_TYPE}) - seen
+            assert IP_TYPES | {IMAGE_TYPE, SOUND_TYPE, BITWISE_TYPE} <= seen
         else:
             assert not (IP_TYPES & seen)
-            assert {IMAGE_TYPE, BITWISE_TYPE} <= seen
+            assert {IMAGE_TYPE, SOUND_TYPE, BITWISE_TYPE} <= seen
     state.advanced_mode = False
 
 
@@ -292,6 +295,12 @@ def check_images():
         q = CONFIG[IMAGE_TYPE]["generator"]()
         assert q.question_type == IMAGE_TYPE and q.validator_type == "integer"
         grid = q.grid
+        if "maximum number of different colours" in q.prompt:
+            depth = int(re.search(r"depth of (\d+) bits", q.prompt).group(1))
+            assert grid is None and q.expected == 2 ** depth
+            assert validate(q.validator_type, q.expected, str(2 ** depth))
+            variants.add("colours")
+            continue
         h, w = len(grid), len(grid[0])
         assert 2 <= h <= w <= 8 and w * h <= 16 and all(len(r) == w for r in grid)
         flat = [c for r in grid for c in r]
@@ -305,8 +314,11 @@ def check_images():
         similar = sum(1 for pair in pairs if pair <= set(flat))
         assert similar == allowed.get(distinct, 0), (distinct, similar)
         p = q.prompt
-        assert "minimum" in p and "image shown" in p
-        if "file size" in p:
+        assert "image shown" in p
+        if "pixels" in p:
+            variants.add("pixels")
+            assert q.expected == w * h
+        elif "file size" in p:
             assert "uncompressed" in p and "ignoring any metadata" in p
             size_bits = bits * w * h
             if p.endswith("Give your answer in bytes."):
@@ -327,7 +339,51 @@ def check_images():
         assert not validate(q.validator_type, q.expected, "abc")
         assert not validate(q.validator_type, q.expected, str(q.expected + 1))
     assert depths == {1, 2, 3, 4}, depths
-    assert variants == {"depth", "bits", "bytes"}, variants
+    assert variants == {"depth", "bits", "bytes", "pixels", "colours"}, variants
+
+
+def check_sound():
+    rates, resolutions, units, durations = set(), set(), set(), set()
+    for _ in range(2000):
+        q = CONFIG[SOUND_TYPE]["generator"]()
+        match = re.fullmatch(
+            r"A mono sound recording lasts (\d+) seconds\. The sampling rate is ([\d,]+) Hz "
+            r"and the sample resolution is (\d+) bits\. What is the minimum file size, "
+            r"ignoring metadata, in (kilobytes|megabytes)\? You may use either base-10 or base-2 conventions\.", q.prompt)
+        assert match and q.question_type == SOUND_TYPE and q.grid is None
+        duration, rate, resolution = int(match[1]), int(match[2].replace(",", "")), int(match[3])
+        unit = match[4][:-1]
+        bits = duration * rate * resolution
+        decimal = bits / ns["UNIT_VALUES"][unit]
+        binary = bits / ns["UNIT_VALUES_BINARY"][unit]
+        assert q.expected == [decimal, binary]
+        assert validate(q.validator_type, q.expected, str(decimal))
+        assert validate(q.validator_type, q.expected, str(binary))
+        assert not validate(q.validator_type, q.expected, str(decimal * 8))
+        rates.add(rate); resolutions.add(resolution); units.add(unit); durations.add(duration)
+    assert len(rates) > 2 and len(resolutions) > 2 and len(durations) > 2
+    assert units == {"kilobyte", "megabyte"}
+
+
+def check_real_widths():
+    for name in ("real_denary_to_bin", "real_bin_to_den"):
+        for _ in range(300):
+            q = CONFIG[name]["generator"]()
+            assert "8 bit mantissa" in q.prompt and "4 bit exponent" in q.prompt
+            if name == "real_denary_to_bin":
+                assert len(q.expected) == 12
+                mantissa, exponent = q.expected[:8], q.expected[8:]
+                mantissa_value = -int(mantissa[0]) + sum(int(bit) * 2 ** -i for i, bit in enumerate(mantissa[1:], 1))
+                exponent_value = int(exponent, 2) - (16 if exponent[0] == "1" else 0)
+                assert float(re.search(r"Convert ([\d.-]+) from", q.prompt).group(1)) == mantissa_value * 2 ** exponent_value
+                assert validate(q.validator_type, q.expected, q.expected)
+            else:
+                match = re.search(r"Convert ([01]{8}) ([01]{4}) from", q.prompt)
+                assert match
+                mantissa, exponent = match.groups()
+                mantissa_value = -int(mantissa[0]) + sum(int(bit) * 2 ** -i for i, bit in enumerate(mantissa[1:], 1))
+                exponent_value = int(exponent, 2) - (16 if exponent[0] == "1" else 0)
+                assert q.expected == [mantissa_value * 2 ** exponent_value]
 
 
 def check_examples():
@@ -338,6 +394,6 @@ def check_examples():
     assert validate("cidr_prefix", 20, "/20") and validate("cidr_prefix", 20, "20")
 
 
-for fn in (check_config, check_generators, check_images, check_examples, check_logical_operators, check_bitwise_questions):
+for fn in (check_config, check_generators, check_images, check_sound, check_real_widths, check_examples, check_logical_operators, check_bitwise_questions):
     fn()
 print("ok")

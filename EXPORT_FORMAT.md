@@ -78,7 +78,7 @@ dashboard average is the sum of the five category totals divided by five.
 | `binary_arithmetic` | `binary_addition`, `binary_shift`, `binary_subtraction`, `binary_multiplication` |
 | `unit_conversion` | `unit_conversion`, `data_transfer` |
 | `operators` | `operators_div_mod`, `operators_boolean` |
-| `bit_patterns` | `ip_network_address`, `ip_host_id`, `ip_cidr_to_mask`, `ip_mask_to_cidr`, `ip_usable_hosts`, `ip_min_subnet`, `ip_broadcast_address`, `ip_first_last_host`, `image_representation`, `bitwise_operators` |
+| `bit_patterns` | `ip_network_address`, `ip_host_id`, `ip_cidr_to_mask`, `ip_mask_to_cidr`, `ip_usable_hosts`, `ip_min_subnet`, `ip_broadcast_address`, `ip_first_last_host`, `image_representation`, `sound_representation`, `bitwise_operators` |
 
 These IDs and their category assignments are frozen for version 1. New
 incompatible semantics require a new version. Additional question IDs may be
