@@ -152,7 +152,18 @@ via `data-cat` attributes). `style.css` is generated and not committed: run
 A minimal Playwright smoke test is included to verify app startup and question rendering.
 
 ```bash
-npm install
+npm ci
 npx playwright install --with-deps chromium
 npm run test:smoke
 ```
+
+The browser tests load PyScript from `pyscript.net` and may fetch its Python
+interpreter from another host. In Copilot cloud sessions, add required hosts
+to the repository's Copilot internet-access allowlist if requests are blocked;
+also check DNS if a host cannot be resolved. See
+[GitHub's firewall documentation](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-the-firewall).
+
+Repository guidance for Copilot is in `.github/copilot-instructions.md`.
+`.github/workflows/copilot-setup-steps.yml` preinstalls test dependencies for
+Copilot sessions running on GitHub Actions once merged into the default branch;
+it does not configure cloud sandboxes or grant browser access to the CDN.
